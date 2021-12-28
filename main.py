@@ -2,6 +2,14 @@ import pygame
 import os
 import sys
 import random
+from pygame import mixer
+
+
+# инициализация плеера
+mixer.init()
+
+# звук выстрела
+shot_sound = mixer.Sound('sounds\\shot.mp3')
 
 
 def load_image(name, colorkey=None):
@@ -64,9 +72,11 @@ class SpaceShip(pygame.sprite.Sprite):
 
     """Метод, позволяющий стрелять"""
     def shoot(self):
+        print('shoot')
         self.bullet_x = self.rect.x + self.get_size()[0] // 2
         self.bullet_y = self.rect.y + self.get_size()[1] // 2
         self.bullet_list.append([self.bullet_x, self.bullet_y])
+        shot_sound.play()
 
     """Метод, изменяющий hp"""
     def change_heal_points(self, action, value):
@@ -84,9 +94,6 @@ class SpaceShip(pygame.sprite.Sprite):
         print(self.hp)
 
     def update(self, *args):
-        # Вызов функции, производящей выстрел
-        if args and args[0].type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            self.shoot()
         # Условия, непозволяющие кораблю выйти за пределы поля
         if self.get_cords()[0] <= 0:
             self.set_cords(1, self.get_cords()[1])
@@ -99,6 +106,7 @@ class SpaceShip(pygame.sprite.Sprite):
 
 
 meteorite_sprites = pygame.sprite.Group()
+
 
 # Класс припятствий
 class Meteorite(pygame.sprite.Sprite):
@@ -148,6 +156,10 @@ while running:
         elif event.type == METEORITEGENERATION:
             new_meteorite = Meteorite(random.randint(40, 360), 0, random.randint(5, 20), random.randint(40, 70))
             meteorite_sprites.add(new_meteorite)
+        # Вызов функции, производящей выстрел
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            space_ship.shoot()
+        # движение
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
                 movement_y = -1
@@ -172,6 +184,6 @@ while running:
     meteorite_sprites.draw(screen)
     meteorite_sprites.update()
     ship_sprite.draw(screen)
-    ship_sprite.update()
+    ship_sprite.update(event)
     pygame.display.flip()
     clock.tick(FPS)
