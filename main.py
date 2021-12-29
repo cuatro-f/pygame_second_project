@@ -36,7 +36,7 @@ def load_image(name, colorkey=None):
 pygame.display.set_caption('Сквозь миры со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
-FPS = 60
+FPS = 144
 clock = pygame.time.Clock()
 
 
