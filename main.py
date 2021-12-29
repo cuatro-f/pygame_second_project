@@ -12,6 +12,7 @@ mixer.init()
 
 # звук выстрела
 shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
+collision_sound = mixer.Sound('data\\sounds\\collision.mp3')
 
 
 # Загрузка изображения
@@ -182,6 +183,7 @@ class Meteorite(pygame.sprite.Sprite):
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
                                                    collided=pygame.sprite.collide_mask)
         if not ship is None:
+            collision_sound.play()
             meteorite_sprites.remove(self)
             ship.change_heal_points('-', self.damage)
 
