@@ -34,24 +34,49 @@ pygame.display.set_caption('Сквозь миры со скоростью све
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
 FPS = 60
+clock = pygame.time.Clock()
 
+
+# группа выстрелов
+shots_sprites = pygame.sprite.Group()
+# группа метеоритов
+meteorite_sprites = pygame.sprite.Group()
+
+
+# класс выстрелов
+class Shot(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(shots_sprites)
+        self.image = load_image('shot_0.png')
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.mask = pygame.mask.from_surface(self.image)
+        # скорость выстрела
+        self.v = -10
+        # сила выстрела
+        self.force = 5
+
+    def update(self):
+        self.rect = self.rect.move(0, self.v)
+
+
+# группа корабля
 ship_sprite = pygame.sprite.Group()
-
 
 # Класс корабля
 class SpaceShip(pygame.sprite.Sprite):
-    def __init__(self, speed, bullet_speed, hp):
+    def __init__(self, speed, hp):
         super().__init__(ship_sprite)
         self.speed = speed
         self.hp = hp
         self.max_hp = hp
-        self.bullet_speed = bullet_speed
-        self.bullet_list = []
 
         self.image = load_image('ship.png')
         self.rect = self.image.get_rect()
         self.rect.x = 275
         self.rect.y = 400
+        self.mask = pygame.mask.from_surface(self.image)
 
     """Метод для изменения координат корабля"""
     def move(self, movement_x, movement_y):
@@ -72,10 +97,9 @@ class SpaceShip(pygame.sprite.Sprite):
 
     """Метод, позволяющий стрелять"""
     def shoot(self):
-        print('shoot')
-        self.bullet_x = self.rect.x + self.get_size()[0] // 2
-        self.bullet_y = self.rect.y + self.get_size()[1] // 2
-        self.bullet_list.append([self.bullet_x, self.bullet_y])
+        bullet_x = self.rect.x + self.get_size()[0] // 2
+        bullet_y = self.rect.y + self.get_size()[1] // 2
+        shots_sprites.add(Shot(bullet_x, bullet_y))
         shot_sound.play()
 
     """Метод, изменяющий hp"""
@@ -90,10 +114,8 @@ class SpaceShip(pygame.sprite.Sprite):
         elif action == '-':
             self.hp -= value
 
-    def get_hp(self):
-        print(self.hp)
-
     def update(self, *args):
+        print('ship hp (update) -', self.hp)
         # Условия, непозволяющие кораблю выйти за пределы поля
         if self.get_cords()[0] <= 0:
             self.set_cords(1, self.get_cords()[1])
@@ -105,24 +127,29 @@ class SpaceShip(pygame.sprite.Sprite):
             self.set_cords(self.get_cords()[0], HEIGHT - 1 - self.get_size()[1])
 
 
-meteorite_sprites = pygame.sprite.Group()
-
-
 # Класс припятствий
 class Meteorite(pygame.sprite.Sprite):
-    def __init__(self, x, y, speed, hp):
+    def __init__(self, x, y, speed, hp) -> object:
         super().__init__(meteorite_sprites)
         self.image = load_image('asteroid_b2.png')
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.mask = pygame.mask.from_surface(self.image)
+
         self.speed = speed
-        self.hp = hp
+        self.max_hp = self.hp = hp
         self.damage = 10
 
     """Метод, для уменьшеня количества hp при попадании"""
     def minus_hp(self, value):
         self.hp -= value
+        # степень прозрачности зависит от потерянного хп
+        # self.image.set_alpha(255 * self.hp / self.max_hp)
+
+        # когда метеорит разрушается то он удалается
+        if self.hp <= 0:
+            meteorite_sprites.remove(self)
 
     """Метод для получения информации о метеорите"""
     def get_information(self):
@@ -136,12 +163,25 @@ class Meteorite(pygame.sprite.Sprite):
         """движение метеорита"""
         self.rect = self.rect.move(0, self.speed)
 
+        # попадание выстрела
+        shot = pygame.sprite.spritecollideany(self, shots_sprites,
+                                                   collided=pygame.sprite.collide_mask)
+        if not shot is None:
+            shots_sprites.remove(shot)
+            self.minus_hp(1)
+
+        # столкновение с метеоритом
+        ship = pygame.sprite.spritecollideany(self, ship_sprite,
+                                                   collided=pygame.sprite.collide_mask)
+        if not ship is None:
+            meteorite_sprites.remove(self)
+            ship.change_heal_points('-', self.damage)
+
 
 # Создание экземпляра класса SpaceShip
-space_ship = SpaceShip(3, 5, 100)
+space_ship = SpaceShip(3, 100)
 ship_sprite.add(space_ship)
 movement_x = movement_y = 0
-clock = pygame.time.Clock()
 
 # Создание события при которм появляются метеориты
 METEORITEGENERATION = pygame.USEREVENT + 1
@@ -154,7 +194,7 @@ while running:
             running = False
         # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
         elif event.type == METEORITEGENERATION:
-            new_meteorite = Meteorite(random.randint(40, 360), 0, random.randint(5, 20), random.randint(40, 70))
+            new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 3), random.randint(5, 15))
             meteorite_sprites.add(new_meteorite)
         # Вызов функции, производящей выстрел
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -181,9 +221,15 @@ while running:
     space_ship.move(movement_x, movement_y)
 
     screen.fill((0, 0, 0))
+
     meteorite_sprites.draw(screen)
     meteorite_sprites.update()
+
+    shots_sprites.draw(screen)
+    shots_sprites.update()
+
     ship_sprite.draw(screen)
     ship_sprite.update(event)
+
     pygame.display.flip()
     clock.tick(FPS)
