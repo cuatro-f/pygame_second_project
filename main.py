@@ -5,15 +5,18 @@ import random
 from pygame import mixer
 
 
+# инициализация pygame
+pygame.init()
 # инициализация плеера
 mixer.init()
 
 # звук выстрела
-shot_sound = mixer.Sound('sounds\\shot.mp3')
+shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
 
 
+# Загрузка изображения
 def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
+    fullname = os.path.join('data\\images', name)
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
@@ -29,7 +32,7 @@ def load_image(name, colorkey=None):
 
     return image
 
-pygame.init()
+
 pygame.display.set_caption('Сквозь миры со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
@@ -54,8 +57,6 @@ class Shot(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         # скорость выстрела
         self.v = -10
-        # сила выстрела
-        self.force = 5
 
     def update(self):
         self.rect = self.rect.move(0, self.v)
@@ -64,13 +65,15 @@ class Shot(pygame.sprite.Sprite):
 # группа корабля
 ship_sprite = pygame.sprite.Group()
 
+
 # Класс корабля
 class SpaceShip(pygame.sprite.Sprite):
-    def __init__(self, speed, hp):
+    def __init__(self, speed, hp, damage):
         super().__init__(ship_sprite)
         self.speed = speed
         self.hp = hp
         self.max_hp = hp
+        self.damage = damage
 
         self.image = load_image('ship.png')
         self.rect = self.image.get_rect()
@@ -78,31 +81,31 @@ class SpaceShip(pygame.sprite.Sprite):
         self.rect.y = 400
         self.mask = pygame.mask.from_surface(self.image)
 
-    """Метод для изменения координат корабля"""
+    """ Метод для изменения координат корабля """
     def move(self, movement_x, movement_y):
         self.rect = self.rect.move(self.speed * movement_x, self.speed * movement_y)
 
-    """Метод, возвращяющий координаты корабля"""
+    """ Метод, возвращяющий координаты корабля """
     def get_cords(self):
         return self.rect.x, self.rect.y
 
-    """Метод, возвращающий размер корабля"""
+    """ Метод, возвращающий размер корабля """
     def get_size(self):
-        return self.image.get_rect()
+        return self.image.get_rect()[2:]
 
-    """Метод, устанавливающий координаты"""
+    """ Метод, устанавливающий координаты """
     def set_cords(self, x, y):
         self.rect.x = x
         self.rect.y = y
 
-    """Метод, позволяющий стрелять"""
+    """ Метод, позволяющий стрелять """
     def shoot(self):
-        bullet_x = self.rect.x + self.get_size()[0] // 2
-        bullet_y = self.rect.y + self.get_size()[1] // 2
+        bullet_x = self.rect.x
+        bullet_y = self.rect.y
         shots_sprites.add(Shot(bullet_x, bullet_y))
         shot_sound.play()
 
-    """Метод, изменяющий hp"""
+    """ Метод, изменяющий hp """
     def change_heal_points(self, action, value):
         if action == '+':
             if self.hp == self.max_hp:
@@ -114,9 +117,10 @@ class SpaceShip(pygame.sprite.Sprite):
         elif action == '-':
             self.hp -= value
 
+    """ Метод, непозволяющий кораблю вылететь за пределы карты """
     def update(self, *args):
         print('ship hp (update) -', self.hp)
-        # Условия, непозволяющие кораблю выйти за пределы поля
+        print(self.get_size())
         if self.get_cords()[0] <= 0:
             self.set_cords(1, self.get_cords()[1])
         if self.get_cords()[1] <= 0:
@@ -125,6 +129,10 @@ class SpaceShip(pygame.sprite.Sprite):
             self.set_cords(WIDTH - self.get_size()[0], self.get_cords()[1])
         if self.get_cords()[1] >= HEIGHT - self.get_size()[1]:
             self.set_cords(self.get_cords()[0], HEIGHT - 1 - self.get_size()[1])
+
+    """ Метод, возвращающий урон, который наносит корабль """
+    def get_damage(self):
+        return self.damage
 
 
 # Класс припятствий
@@ -168,7 +176,7 @@ class Meteorite(pygame.sprite.Sprite):
                                                    collided=pygame.sprite.collide_mask)
         if not shot is None:
             shots_sprites.remove(shot)
-            self.minus_hp(1)
+            self.minus_hp(space_ship.get_damage())
 
         # столкновение с метеоритом
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
@@ -178,8 +186,18 @@ class Meteorite(pygame.sprite.Sprite):
             ship.change_heal_points('-', self.damage)
 
 
+# Класс заднего фона
+class Background(pygame.sprite.Sprite):
+    def __init__(self, image_file, location):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = load_image(image_file)
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = location
+
+
 # Создание экземпляра класса SpaceShip
-space_ship = SpaceShip(3, 100)
+# Аргументы: Скоргость, hp, урон
+space_ship = SpaceShip(5, 100, 5)
 ship_sprite.add(space_ship)
 movement_x = movement_y = 0
 
@@ -189,12 +207,14 @@ pygame.time.set_timer(METEORITEGENERATION, 3000)
 
 running = True
 while running:
+    # Задний фон
+    background = Background("space.png", [0, 0])
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
         elif event.type == METEORITEGENERATION:
-            new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 3), random.randint(5, 15))
+            new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 6), random.randint(5, 15))
             meteorite_sprites.add(new_meteorite)
         # Вызов функции, производящей выстрел
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -220,7 +240,9 @@ while running:
                 movement_x = 0
     space_ship.move(movement_x, movement_y)
 
-    screen.fill((0, 0, 0))
+    # Отображения заднего фона
+    screen.fill([255, 255, 255])
+    screen.blit(background.image, background.rect)
 
     meteorite_sprites.draw(screen)
     meteorite_sprites.update()
