@@ -32,12 +32,12 @@ easy_meteorite_array = [1, 1, 1, 1, 2]
 hard_meteorite_array = [1, 2]
 
 min_meteorite_speed_for_easy_level = 1
-max_meteorite_speed_for_easy_level = 4
+max_meteorite_speed_for_easy_level = 3
 
-min_meteorite_speed_for_hard_level = 3
-max_meteorite_speed_for_hard_level = 8
+min_meteorite_speed_for_hard_level = 4
+max_meteorite_speed_for_hard_level = 7
 # Тестовая установка уровня сложности
-level = 'hard'
+level = 'hard1'
 if level == 'hard':
     meteorite_array = hard_meteorite_array
     min_meteorite_speed = min_meteorite_speed_for_hard_level
@@ -87,10 +87,13 @@ def create_meteorite():
                               meteorite_hp, meteorite_damage, meteorite_image)
 
 
+# шаг корабля за одно нажатие
+step = 0.5
+
 pygame.display.set_caption('Сквозь миры со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
-FPS = 144
+FPS = 60
 clock = pygame.time.Clock()
 pygame.mixer.find_channel(True).play(main_theme)
 
@@ -256,6 +259,9 @@ class Meteorite(pygame.sprite.Sprite):
             meteorite_sprites.remove(self)
             ship.change_heal_points('-', self.damage)
 
+        if self.hp <= self.max_hp / 2:
+            self.image = load_image('asteroid_half_hp.png')
+
 
 # Класс заднего фона
 class Background(pygame.sprite.Sprite):
@@ -279,7 +285,7 @@ pygame.time.set_timer(METEORITEGENERATION, 3000)
 running = True
 while running:
     # Задний фон
-    background = Background("space.png", [0, 0])
+    background = Background("space_1.png", [0, 0])
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -294,13 +300,13 @@ while running:
         # движение
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
-                movement_y = -1
+                movement_y = -step
             elif event.key == pygame.K_s:
-                movement_y = 1
+                movement_y = step
             if event.key == pygame.K_d:
-                movement_x = 1
+                movement_x = step
             elif event.key == pygame.K_a:
-                movement_x = -1
+                movement_x = -step
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_w:
                 movement_y = 0
