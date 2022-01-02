@@ -26,7 +26,7 @@ def load_image(name, colorkey=None):
     return image
 
 
-first_image = load_image('asteroid_b2.png')
+first_image = load_image('small_asteroid.png')
 rect = first_image.get_rect()
 print(f'first pic {rect[2:]}')
 second_image = load_image('asteroid_s1.png')

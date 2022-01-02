@@ -5,16 +5,6 @@ import random
 from pygame import mixer
 
 
-# инициализация pygame
-pygame.init()
-# инициализация плеера
-mixer.init()
-
-# звук выстрела
-shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
-collision_sound = mixer.Sound('data\\sounds\\collision.mp3')
-
-
 # Загрузка изображения
 def load_image(name, colorkey=None):
     fullname = os.path.join('data\\images', name)
@@ -34,12 +24,81 @@ def load_image(name, colorkey=None):
     return image
 
 
+# Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
+# уровне сложности больших метеоритов должно быть меньше, чем на высоком
+# Список для легкого уровня сложности
+easy_meteorite_array = [1, 1, 1, 1, 2]
+# Список для сложного уровня
+hard_meteorite_array = [1, 2]
+
+min_meteorite_speed_for_easy_level = 1
+max_meteorite_speed_for_easy_level = 4
+
+min_meteorite_speed_for_hard_level = 3
+max_meteorite_speed_for_hard_level = 8
+# Тестовая установка уровня сложности
+level = 'hard'
+if level == 'hard':
+    meteorite_array = hard_meteorite_array
+    min_meteorite_speed = min_meteorite_speed_for_hard_level
+    max_meteorite_speed = max_meteorite_speed_for_hard_level
+else:
+    meteorite_array = easy_meteorite_array
+    min_meteorite_speed = min_meteorite_speed_for_easy_level
+    max_meteorite_speed = max_meteorite_speed_for_easy_level
+
+# инициализация pygame
+pygame.init()
+# инициализация плеера
+mixer.init()
+
+# Устанавливаем лимит на каналы
+pygame.mixer.set_num_channels(20)
+
+# Звук выстрела
+shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
+# Звук столкновения
+collision_sound = mixer.Sound('data\\sounds\\collision.mp3')
+# Главная тема
+main_theme = mixer.Sound('data\\sounds\\main_theme.mp3')
+main_theme.set_volume(0.2)
+
+
+# Создание метеорита
+def create_meteorite():
+    meteorite_x = random.randint(1, WIDTH - 64)
+    meteorite_y = 0
+    meteorite_speed = random.randint(min_meteorite_speed, max_meteorite_speed)
+    meteorite_size = random.choice(meteorite_array)
+    # Самый маленький метеорит
+    if meteorite_size == 1:
+        meteorite_x = random.randint(1, WIDTH - small_asteroid_size[0])
+        meteorite_hp = 10
+        meteorite_damage = 10
+        meteorite_image = 'small_asteroid.png'
+    # Средний метеорит
+    elif meteorite_size == 2:
+        meteorite_x = random.randint(1, WIDTH - large_asteroid_size[0])
+        meteorite_hp = 20
+        meteorite_damage = 20
+        meteorite_image = 'large_asteroid.png'
+
+    new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
+                              meteorite_hp, meteorite_damage, meteorite_image)
+
+
 pygame.display.set_caption('Сквозь миры со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
 FPS = 144
 clock = pygame.time.Clock()
+pygame.mixer.find_channel(True).play(main_theme)
 
+# Размеры астероидов
+# Маленького астероида
+small_asteroid_size = load_image('small_asteroid.png').get_rect()[2:]
+# Большого Астероида
+large_asteroid_size = load_image('large_asteroid.png').get_rect()[2:]
 
 # группа выстрелов
 shots_sprites = pygame.sprite.Group()
@@ -83,23 +142,28 @@ class SpaceShip(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
     """ Метод для изменения координат корабля """
+
     def move(self, movement_x, movement_y):
         self.rect = self.rect.move(self.speed * movement_x, self.speed * movement_y)
 
     """ Метод, возвращяющий координаты корабля """
+
     def get_cords(self):
         return self.rect.x, self.rect.y
 
     """ Метод, возвращающий размер корабля """
+
     def get_size(self):
         return self.image.get_rect()[2:]
 
     """ Метод, устанавливающий координаты """
+
     def set_cords(self, x, y):
         self.rect.x = x
         self.rect.y = y
 
     """ Метод, позволяющий стрелять """
+
     def shoot(self):
         bullet_x = self.rect.x
         bullet_y = self.rect.y
@@ -107,6 +171,7 @@ class SpaceShip(pygame.sprite.Sprite):
         shot_sound.play()
 
     """ Метод, изменяющий hp """
+
     def change_heal_points(self, action, value):
         if action == '+':
             if self.hp == self.max_hp:
@@ -119,9 +184,9 @@ class SpaceShip(pygame.sprite.Sprite):
             self.hp -= value
 
     """ Метод, непозволяющий кораблю вылететь за пределы карты """
+
     def update(self, *args):
         print('ship hp (update) -', self.hp)
-        print(self.get_size())
         if self.get_cords()[0] <= 0:
             self.set_cords(1, self.get_cords()[1])
         if self.get_cords()[1] <= 0:
@@ -132,15 +197,16 @@ class SpaceShip(pygame.sprite.Sprite):
             self.set_cords(self.get_cords()[0], HEIGHT - 1 - self.get_size()[1])
 
     """ Метод, возвращающий урон, который наносит корабль """
+
     def get_damage(self):
         return self.damage
 
 
 # Класс припятствий
 class Meteorite(pygame.sprite.Sprite):
-    def __init__(self, x, y, speed, hp) -> object:
+    def __init__(self, x, y, speed, hp, damage, image) -> object:
         super().__init__(meteorite_sprites)
-        self.image = load_image('asteroid_b2.png')
+        self.image = load_image(image)
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -148,9 +214,10 @@ class Meteorite(pygame.sprite.Sprite):
 
         self.speed = speed
         self.max_hp = self.hp = hp
-        self.damage = 10
+        self.damage = damage
 
     """Метод, для уменьшеня количества hp при попадании"""
+
     def minus_hp(self, value):
         self.hp -= value
         # степень прозрачности зависит от потерянного хп
@@ -161,10 +228,12 @@ class Meteorite(pygame.sprite.Sprite):
             meteorite_sprites.remove(self)
 
     """Метод для получения информации о метеорите"""
+
     def get_information(self):
         return self.rect.x, self.rect.y, self.speed, self.hp
 
     """Метод, наносящий урон"""
+
     def get_damage(self):
         return self.damage
 
@@ -174,14 +243,14 @@ class Meteorite(pygame.sprite.Sprite):
 
         # попадание выстрела
         shot = pygame.sprite.spritecollideany(self, shots_sprites,
-                                                   collided=pygame.sprite.collide_mask)
+                                              collided=pygame.sprite.collide_mask)
         if not shot is None:
             shots_sprites.remove(shot)
             self.minus_hp(space_ship.get_damage())
 
         # столкновение с метеоритом
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
-                                                   collided=pygame.sprite.collide_mask)
+                                              collided=pygame.sprite.collide_mask)
         if not ship is None:
             collision_sound.play()
             meteorite_sprites.remove(self)
@@ -216,8 +285,9 @@ while running:
             running = False
         # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
         elif event.type == METEORITEGENERATION:
-            new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 6), random.randint(5, 15))
-            meteorite_sprites.add(new_meteorite)
+            '''new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 6), random.randint(5, 15))
+            meteorite_sprites.add(new_meteorite)'''
+            create_meteorite()
         # Вызов функции, производящей выстрел
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             space_ship.shoot()
