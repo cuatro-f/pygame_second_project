@@ -2,6 +2,7 @@ import pygame
 import os
 import sys
 import random
+import pygame_gui
 from pygame import mixer
 
 
@@ -22,6 +23,129 @@ def load_image(name, colorkey=None):
         image.convert_alpha()
 
     return image
+
+
+# инициализация pygame
+pygame.init()
+# инициализация плеера
+mixer.init()
+
+# Устанавливаем лимит на каналы
+pygame.mixer.set_num_channels(20)
+
+# Звук выстрела
+shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
+# Звук столкновения
+collision_sound = mixer.Sound('data\\sounds\\collision.mp3')
+# Главная тема
+main_theme = mixer.Sound('data\\sounds\\main_theme.mp3')
+main_theme.set_volume(0.2)
+
+# шаг корабля за одно нажатие
+step = 0.5
+
+pygame.display.set_caption('Сквозь миры со скоростью света')
+SIZE = WIDTH, HEIGHT = 400, 600
+screen = pygame.display.set_mode(SIZE)
+FPS = 60
+clock = pygame.time.Clock()
+main_theme.play(loops=-1)
+
+# менеджер для интерфейса
+manager = pygame_gui.UIManager(SIZE)
+
+
+# Класс заднего фона
+class Background(pygame.sprite.Sprite):
+    def __init__(self, image_file, location):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = load_image(image_file)
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = location
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+# начальный экран
+def start_screen():
+    background = Background('start_fon_2.png', [0, 0])
+
+    # ПОТОМ НАДО БУДЕТ СДЕЛАТЬ ВЫПАДАЮЩИЙ СПИСОК С ВЫБОРОМ УРОВНЯ
+    # кнопка запускающая игру
+    play_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 250), (150, 50)),
+        text='ИГРАТЬ',
+        manager=manager,
+    )
+    rating_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 305), (150, 30)),
+        text='РЕЙТИНГ',
+        manager=manager,
+    )
+
+    rules_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 340), (150, 30)),
+        text='ПРАВИЛА',
+        manager=manager,
+    )
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == play_button:
+                    return
+            manager.process_events(event)
+
+        # Отображения заднего фона
+        screen.fill([255, 255, 255])
+        screen.blit(background.image, background.rect)
+
+        time_delta = clock.tick(FPS) / 1000.0
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
+        pygame.display.flip()
+
+
+# пауза
+def pause_screen():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return
+
+        screen.blit(load_image('start_pause.png', -1), ((WIDTH - 128) // 2, (HEIGHT - 128) // 2))
+        pygame.display.flip()
+
+
+
+
+# вызов начального экрана
+start_screen()
+
+
+# Размеры астероидов
+# Маленького астероида
+small_asteroid_size = load_image('small_asteroid.png').get_rect()[2:]
+# Большого Астероида
+large_asteroid_size = load_image('large_asteroid.png').get_rect()[2:]
+
+# группа выстрелов
+shots_sprites = pygame.sprite.Group()
+# группа метеоритов
+meteorite_sprites = pygame.sprite.Group()
+# группа корабля
+ship_sprite = pygame.sprite.Group()
+# группа аптечек
+heal_sprites = pygame.sprite.Group()
 
 
 # Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
@@ -49,22 +173,6 @@ else:
     max_meteorite_speed = max_meteorite_speed_for_easy_level
     generation_time = 3000
 
-# инициализация pygame
-pygame.init()
-# инициализация плеера
-mixer.init()
-
-# Устанавливаем лимит на каналы
-pygame.mixer.set_num_channels(20)
-
-# Звук выстрела
-shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
-# Звук столкновения
-collision_sound = mixer.Sound('data\\sounds\\collision.mp3')
-# Главная тема
-main_theme = mixer.Sound('data\\sounds\\main_theme.mp3')
-main_theme.set_volume(0.2)
-
 
 # Создание метеорита
 def create_meteorite():
@@ -89,38 +197,12 @@ def create_meteorite():
                               meteorite_hp, meteorite_damage, meteorite_image)
 
 
-# шаг корабля за одно нажатие
-step = 0.5
-
-pygame.display.set_caption('Сквозь миры со скоростью света')
-SIZE = WIDTH, HEIGHT = 400, 600
-screen = pygame.display.set_mode(SIZE)
-FPS = 60
-clock = pygame.time.Clock()
-main_theme.play(loops=-1)
-
-# Размеры астероидов
-# Маленького астероида
-small_asteroid_size = load_image('small_asteroid.png').get_rect()[2:]
-# Большого Астероида
-large_asteroid_size = load_image('large_asteroid.png').get_rect()[2:]
-
-# группа выстрелов
-shots_sprites = pygame.sprite.Group()
-# группа метеоритов
-meteorite_sprites = pygame.sprite.Group()
-# группа корабля
-ship_sprite = pygame.sprite.Group()
-# группа аптечек
-heal_sprites = pygame.sprite.Group()
-
-
 # класс выстрелов
 class Shot(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(shots_sprites)
         self.image = load_image('shot_0.png')
-        self.rect = self.image.get_rect()a
+        self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.mask = pygame.mask.from_surface(self.image)
@@ -295,15 +377,6 @@ class Meteorite(pygame.sprite.Sprite):
             self.image = load_image('asteroid_half_hp.png')
 
 
-# Класс заднего фона
-class Background(pygame.sprite.Sprite):
-    def __init__(self, image_file, location):
-        pygame.sprite.Sprite.__init__(self)
-        self.image = load_image(image_file)
-        self.rect = self.image.get_rect()
-        self.rect.left, self.rect.top = location
-
-
 # Создание экземпляра класса SpaceShip
 # Аргументы: Скоргость, hp, урон
 space_ship = SpaceShip(10, 100, 5)
@@ -321,6 +394,11 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        # пауза
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                print('pause')
+                pause_screen()
         # Создание метеорита с случайными положением, радиусом, скоростью и коd-dвом hp
         elif event.type == METEORITEGENERATION:
             '''new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 6), random.randint(5, 15))
@@ -330,7 +408,7 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             space_ship.shoot()
         # движение
-        elif event.type == pygame.KEYDOWN:
+        if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
                 movement_y = -step
             elif event.key == pygame.K_s:
@@ -348,6 +426,7 @@ while running:
                 movement_x = 0
             elif event.key == pygame.K_a:
                 movement_x = 0
+
     space_ship.move(movement_x, movement_y)
 
     # Отображения заднего фона
@@ -361,7 +440,7 @@ while running:
     shots_sprites.update()
 
     ship_sprite.draw(screen)
-    ship_sprite.update(event)
+    ship_sprite.update()
 
     heal_sprites.draw(screen)
     heal_sprites.update()
