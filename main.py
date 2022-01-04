@@ -126,8 +126,6 @@ def pause_screen():
         pygame.display.flip()
 
 
-
-
 # вызов начального экрана
 start_screen()
 
@@ -135,7 +133,9 @@ start_screen()
 # Размеры астероидов
 # Маленького астероида
 small_asteroid_size = load_image('small_asteroid.png').get_rect()[2:]
-# Большого Астероида
+# Среднего Астероида
+medium_asteroid_size = load_image('medium_asteroid.png').get_rect()[2:]
+# Большого астероида
 large_asteroid_size = load_image('large_asteroid.png').get_rect()[2:]
 
 # группа выстрелов
@@ -151,27 +151,33 @@ heal_sprites = pygame.sprite.Group()
 # Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
 # уровне сложности больших метеоритов должно быть меньше, чем на высоком
 # Список для легкого уровня сложности
-easy_meteorite_array = [1, 1, 1, 1, 2]
+easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
 # Список для сложного уровня
-hard_meteorite_array = [1, 2]
+hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
 
 min_meteorite_speed_for_easy_level = 1
 max_meteorite_speed_for_easy_level = 3
+# шанс на выпадения аптечки - 10%
+easy_level_heal_drop = (1, 10)
 
 min_meteorite_speed_for_hard_level = 4
 max_meteorite_speed_for_hard_level = 7
+# шанс на выпадения аптечки - 5%
+hard_level_heal_drop = (1, 20)
 # Тестовая установка уровня сложности
-level = 'hard'
+level = 'easy'
 if level == 'hard':
     meteorite_array = hard_meteorite_array
     min_meteorite_speed = min_meteorite_speed_for_hard_level
     max_meteorite_speed = max_meteorite_speed_for_hard_level
     generation_time = 1000
+    first_point, second_point = hard_level_heal_drop
 else:
     meteorite_array = easy_meteorite_array
     min_meteorite_speed = min_meteorite_speed_for_easy_level
     max_meteorite_speed = max_meteorite_speed_for_easy_level
     generation_time = 3000
+    first_point, second_point = easy_level_heal_drop
 
 
 # Создание метеорита
@@ -186,15 +192,27 @@ def create_meteorite():
         meteorite_hp = 10
         meteorite_damage = 10
         meteorite_image = 'small_asteroid.png'
+        # опыт за разрушение астероида
+        experience_for_kill = 100
     # Средний метеорит
     elif meteorite_size == 2:
-        meteorite_x = random.randint(1, WIDTH - large_asteroid_size[0])
+        meteorite_x = random.randint(1, WIDTH - medium_asteroid_size[0])
         meteorite_hp = 20
         meteorite_damage = 20
+        meteorite_image = 'medium_asteroid.png'
+        # опыт за разрушение астероида
+        experience_for_kill = 200
+    elif meteorite_size == 3:
+        meteorite_x = random.randint(1, WIDTH - large_asteroid_size[0])
+        meteorite_hp = 50
+        meteorite_damage = 30
         meteorite_image = 'large_asteroid.png'
+        # опыт за разрушение астероида
+        experience_for_kill = 300
 
     new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
-                              meteorite_hp, meteorite_damage, meteorite_image)
+                              meteorite_hp, meteorite_damage, meteorite_image,
+                              experience_for_kill)
 
 
 # класс выстрелов
@@ -217,14 +235,14 @@ class Shot(pygame.sprite.Sprite):
 class Heal(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super(Heal, self).__init__(heal_sprites)
-        self.image = load_image('test_heal_image.png')
+        self.image = load_image('heal.png')
         self.heal_count = 20
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.mask = pygame.mask.from_surface(self.image)
         # скорость аптечки
-        self.v = 10
+        self.v = 2
 
     def update(self):
         self.rect = self.rect.move(0, self.v)
@@ -297,7 +315,6 @@ class SpaceShip(pygame.sprite.Sprite):
     """ Метод, непозволяющий кораблю вылететь за пределы карты """
 
     def update(self, *args):
-        print('ship hp (update) -', self.hp)
         if self.get_cords()[0] <= 0:
             self.set_cords(1, self.get_cords()[1])
         if self.get_cords()[1] <= 0:
@@ -315,7 +332,7 @@ class SpaceShip(pygame.sprite.Sprite):
 
 # Класс припятствий
 class Meteorite(pygame.sprite.Sprite):
-    def __init__(self, x, y, speed, hp, damage, image) -> object:
+    def __init__(self, x, y, speed, hp, damage, image, experience_for_kill) -> object:
         super().__init__(meteorite_sprites)
         self.image = load_image(image)
         self.rect = self.image.get_rect()
@@ -327,6 +344,7 @@ class Meteorite(pygame.sprite.Sprite):
         self.max_hp = self.hp = hp
         self.damage = damage
         self.full_damage = True
+        self.experience_for_kill = experience_for_kill
 
     """Метод, для уменьшеня количества hp при попадании"""
 
@@ -338,7 +356,8 @@ class Meteorite(pygame.sprite.Sprite):
         # когда метеорит разрушается то он удалается
         if self.hp <= 0:
             meteorite_sprites.remove(self)
-            Heal(self.get_information()[0], self.get_information()[1])
+            if random.randint(first_point, second_point) == 2:
+                Heal(self.get_information()[0], self.get_information()[1])
 
     """Метод для получения информации о метеорите"""
 
@@ -349,6 +368,9 @@ class Meteorite(pygame.sprite.Sprite):
 
     def get_damage(self):
         return self.damage
+
+    def get_experience(self):
+        return self.experience_for_kill
 
     def update(self):
         """движение метеорита"""
@@ -375,6 +397,7 @@ class Meteorite(pygame.sprite.Sprite):
                 self.damage //= 2
                 self.full_damage = False
             self.image = load_image('asteroid_half_hp.png')
+            self.mask = pygame.mask.from_surface(self.image)
 
 
 # Создание экземпляра класса SpaceShip
@@ -389,6 +412,7 @@ pygame.time.set_timer(METEORITEGENERATION, generation_time)
 
 running = True
 while running:
+    score = 0
     # Задний фон
     background = Background("space_1.png", [0, 0])
     for event in pygame.event.get():
