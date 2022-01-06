@@ -38,11 +38,12 @@ pygame.mixer.set_num_channels(20)
 
 # Звук выстрела
 shot_sound = mixer.Sound('data\\sounds\\shot.mp3')
+shot_sound.set_volume(0.5)
 # Звук столкновения
 collision_sound = mixer.Sound('data\\sounds\\collision.mp3')
 # Главная тема
 main_theme = mixer.Sound('data\\sounds\\main_theme.mp3')
-main_theme.set_volume(0.2)
+main_theme.set_volume(0.05)
 
 # шаг корабля за одно нажатие
 step = 0.5
@@ -141,6 +142,9 @@ medium_asteroid_size = load_image('medium_asteroid.png').get_rect()[2:]
 # Большого астероида
 large_asteroid_size = load_image('large_asteroid.png').get_rect()[2:]
 
+# Размер сломанного корабля
+broken_ship_size = load_image('Broken_ship.png').get_rect()[2:]
+
 # группа выстрелов
 shots_sprites = pygame.sprite.Group()
 # группа метеоритов
@@ -162,39 +166,60 @@ easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
 # Список для сложного уровня
 hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
 
+# Скорость астероидов для легкого уровня
 min_meteorite_speed_for_easy_level = 90
 max_meteorite_speed_for_easy_level = 110
-# шанс на выпадения аптечки - 10%
+# шанс на выпадения аптечки - 10% (для легкого уровня)
 easy_level_heal_drop = (1, 10)
 
+# Скорость астероидов для сложного уровня
 min_meteorite_speed_for_hard_level = 110
 max_meteorite_speed_for_hard_level = 150
-# шанс на выпадения аптечки - 5%
+# шанс на выпадения аптечки - 5% (для сложного уровня)
 hard_level_heal_drop = (1, 20)
+
+
+# Скорость сломанного корабля (для легкого уроня)
+min_broken_ship_speed_for_easy_level = 60
+max_broken_ship_speed_for_easy_level = 90
+
+# Скорость сломанного корабля (для сложного уроня)
+min_broken_ship_speed_for_hard_level = 80
+max_broken_ship_speed_for_hard_level = 110
+
 # Тестовая установка уровня сложности
-level = 'hardx'
+level = 'hard'
 if level == 'hard':
     meteorite_array = hard_meteorite_array
     min_meteorite_speed = min_meteorite_speed_for_hard_level
     max_meteorite_speed = max_meteorite_speed_for_hard_level
-    generation_time = 1000
+    meteorite_generation_time = 1000
+    broken_ship_generation_time = 5000
     first_point, second_point = hard_level_heal_drop
+    min_broken_ship_speed = min_broken_ship_speed_for_easy_level
+    max_broken_ship_speed = max_broken_ship_speed_for_easy_level
 else:
     meteorite_array = easy_meteorite_array
     min_meteorite_speed = min_meteorite_speed_for_easy_level
     max_meteorite_speed = max_meteorite_speed_for_easy_level
-    generation_time = 3000
+    meteorite_generation_time = 3000
+    broken_ship_generation_time = 10000
     first_point, second_point = easy_level_heal_drop
+    min_broken_ship_speed = min_broken_ship_speed_for_hard_level
+    max_broken_ship_speed = max_broken_ship_speed_for_hard_level
+
+# Време для начисления очков
+points_generation_time = 5000
 
 
 # типы метеоритов
 small = 'small'
-meduim = 'medium'
+medium = 'medium'
 large = 'large'
+
 
 # Создание метеорита
 def create_meteorite():
-    meteorite_x = random.randint(1, WIDTH - 64)
     meteorite_y = 0
     meteorite_speed = random.randint(min_meteorite_speed, max_meteorite_speed)
     meteorite_size = random.choice(meteorite_array)
@@ -213,7 +238,7 @@ def create_meteorite():
         meteorite_hp = 20
         meteorite_damage = 20
         meteorite_image = 'medium_asteroid.png'
-        meteorite_type = meduim
+        meteorite_type = medium
         # опыт за разрушение астероида
         experience_for_kill = 200
     elif meteorite_size == 3:
@@ -225,13 +250,28 @@ def create_meteorite():
         # опыт за разрушение астероида
         experience_for_kill = 300
 
-    # new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
-    #                           meteorite_hp, meteorite_damage, meteorite_image,
-    #                           experience_for_kill, meteorite_type)
-
-    b_s = BrokenShip(meteorite_x, meteorite_y)
+    new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
+                              meteorite_hp, meteorite_damage, meteorite_image,
+                              experience_for_kill, meteorite_type)
 
 
+# Создание сломанного корабля
+def create_broken_ship():
+    generation_array = [1, 2]
+    broken_ship_speed = random.randint(min_broken_ship_speed, max_broken_ship_speed)
+    if random.choice(generation_array) == 1:
+        broken_ship_y = 0
+        broken_ship_x = random.randint(1, WIDTH - broken_ship_size[0])
+        move_direction = 'y'
+    else:
+        broken_ship_y = random.randint(1, WIDTH - broken_ship_size[0])
+        broken_ship_x = random.choice([1, WIDTH - broken_ship_size[0]])
+        move_direction = 'x'
+        # Позволяет кораблю лететь влево
+        if broken_ship_x == WIDTH - broken_ship_size[0]:
+            broken_ship_speed *= -1
+
+    broken_ship = BrokenShip(broken_ship_x, broken_ship_y, broken_ship_speed, move_direction)
 
 
 # класс выстрелов
@@ -248,6 +288,10 @@ class Shot(pygame.sprite.Sprite):
 
     def update(self):
         self.rect = self.rect.move(0, self.v)
+        # Удаление выстрела, если он вылетел за пределы карты
+        # Условие, позволяющее убирать выстрелы, вылетевшие за пределы карты
+        if self.rect.y <= 0:
+            shots_sprites.remove(self)
 
 
 # Класс аптечек
@@ -272,6 +316,10 @@ class Heal(pygame.sprite.Sprite):
         if not ship is None:
             heal_sprites.remove(self)
             ship.change_heal_points('+', self.heal_count)
+
+        # Условие, позволяющее убирать аптечки, вылетевшие за пределы карты
+        if self.rect.y >= HEIGHT:
+            heal_sprites.remove(self)
 
 
 # Класс корабля
@@ -330,6 +378,8 @@ class SpaceShip(pygame.sprite.Sprite):
                     self.hp = self.max_hp
         elif action == '-':
             self.hp -= value
+            points.minus_points(50)
+            print(points.get_points())
 
     """ Метод, непозволяющий кораблю вылететь за пределы карты """
 
@@ -401,6 +451,10 @@ class Meteorite(pygame.sprite.Sprite):
                 self.image = load_image('asteroid_half_hp.png')
             self.mask = pygame.mask.from_surface(self.image)
 
+        # Условие, позволяющее убирать астероиды, вылетевшие за пределы карты
+        if self.rect.y >= HEIGHT:
+            meteorite_sprites.remove(self)
+
     """Метод, для уменьшеня количества hp при попадании"""
 
     def minus_hp(self, value):
@@ -415,6 +469,7 @@ class Meteorite(pygame.sprite.Sprite):
 
             # когда метеорит разрушается то он удалается
             meteorite_sprites.remove(self)
+            points.add_points(300)
 
     """Метод для получения информации о метеорите"""
 
@@ -430,6 +485,7 @@ class Meteorite(pygame.sprite.Sprite):
         return self.experience_for_kill
 
 
+# Класс выстрелов сломанного корабля
 class ShotOfBrokenShip(pygame.sprite.Sprite):
     def __init__(self, x, y, type_shot, ship_speed):
         super().__init__(shot_of_broken_ship_sprites)
@@ -485,19 +541,28 @@ class ShotOfBrokenShip(pygame.sprite.Sprite):
             shot_of_broken_ship_sprites.remove(self)
             ship.change_heal_points('-', self.damage)
 
+        # Условие, позволяющее убирать выстрелы, вылетевшие за пределы карты
+        if (self.rect.x < 0 or self.rect.x >= WIDTH) or (self.rect.y < 0 or self.rect.y >= HEIGHT):
+            shot_of_broken_ship_sprites.remove(self)
 
+
+# Класс сломанного корабля
+# move_direction позволяет кораблю двигаться погоризонтали, если move_direction = y
 class BrokenShip(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, speed,  move_direction):
         super().__init__(broken_ship_sprites)
         self.image = load_image('Broken_ship.png')
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
-        self.speed = 80
+        self.speed = speed
         self.hp = 55
+        self. move_direction = move_direction
         # дамаг при столкновениии с конструкцией
         self.damage = 40
         # координата y для движения
         self.y_moving_coord = y
+        # координата x для движения
+        self.x_moving_coord = x
 
         # отсчет выстрелов
         self.clock_self = pygame.time.Clock()
@@ -509,10 +574,23 @@ class BrokenShip(pygame.sprite.Sprite):
         # всего их 5 => 0-4
         self.type_shot = random.randrange(1, 5)
 
+    # Движение сломанного корабля
     def update(self):
         # движение корабля
-        self.y_moving_coord += self.speed / FPS
-        self.rect = self.rect.move(0, int(self.y_moving_coord - self.rect.y))
+        # Позволяет двигаться кораблю погоризонтали
+        if self.move_direction == 'y':
+            self.y_moving_coord += self.speed / FPS
+            self.rect = self.rect.move(0, int(self.y_moving_coord - self.rect.y))
+        elif self.move_direction == 'x':
+            self.x_moving_coord += self.speed / FPS
+            self.rect = self.rect.move(int(self.x_moving_coord - self.rect.x), 0)
+
+        # Регистрация выстрелов гг корабля по сломанному кораблю
+        shot = pygame.sprite.spritecollideany(self, shots_sprites,
+                                              collided=pygame.sprite.collide_mask)
+        if not shot is None:
+            shots_sprites.remove(shot)
+            self.minus_hp(space_ship.get_damage())
 
         # отсчет выстрелов
         tick = self.clock_self.tick()
@@ -529,9 +607,13 @@ class BrokenShip(pygame.sprite.Sprite):
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
                                               collided=pygame.sprite.collide_mask)
         if not ship is None:
+            collision_sound.play()
             broken_ship_sprites.remove(self)
             ship.change_heal_points('-', self.damage)
 
+        # Условие, позволяющее убирать корабли, вылетевшие за пределы карты
+        if self.rect.y >= HEIGHT or (self.rect.x <= 0 - broken_ship_size[0] or self.rect.x >= WIDTH):
+            broken_ship_sprites.remove(self)
 
     # стрельба
     def shoot(self, type_shot):
@@ -563,6 +645,39 @@ class BrokenShip(pygame.sprite.Sprite):
 
         shot_of_broken_ship_sprites.add(ShotOfBrokenShip(x_shot, y_shot, self.type_shot, self.speed))
 
+    # Уменьшение hp
+    def minus_hp(self, count):
+        self.hp -= count
+        if self.hp <= 0:
+            # выпадение хилки
+            # first_point = second_point = 2  # 100% шанс
+            if random.randint(first_point, second_point) == 2:
+                # размер картинки хилки 40*40
+                Heal((self.image.get_rect()[2] - 40) // 2 + self.rect.x, self.rect.y)
+
+            # когда сломанный корабль разрушается,то он удалается
+            broken_ship_sprites.remove(self)
+            points.add_points(400)
+
+    def get_hp(self):
+        return self.hp
+
+
+# Класс очков
+class Points:
+    def __init__(self):
+        self.count = 0
+
+    def add_points(self, count):
+        self.count += count
+        print(self.count)
+
+    def get_points(self):
+        return self.count
+
+    def minus_points(self, count):
+        if self.count - count >= 0:
+            self.count -= count
 
 
 # Создание экземпляра класса SpaceShip
@@ -573,11 +688,18 @@ movement_x = movement_y = 0
 
 # Создание события при которм появляются метеориты
 METEORITEGENERATION = pygame.USEREVENT + 1
-pygame.time.set_timer(METEORITEGENERATION, generation_time)
+pygame.time.set_timer(METEORITEGENERATION, meteorite_generation_time)
+# Создание события, которое начисляет очки
+GIVEPOINTS = pygame.USEREVENT + 1
+pygame.time.set_timer(GIVEPOINTS, points_generation_time)
+# Создание события генерации сломанного корабля
+BROKENSHIPGENERATION = pygame.USEREVENT + 1
+pygame.time.set_timer(BROKENSHIPGENERATION, broken_ship_generation_time)
+
+points = Points()
 
 running = True
 while running:
-    score = 0
     # Задний фон
     background = Background("space_1.png", [0, 0])
     for event in pygame.event.get():
@@ -588,32 +710,37 @@ while running:
             if event.key == pygame.K_SPACE:
                 print('pause')
                 pause_screen()
-        # Создание метеорита с случайными положением, радиусом, скоростью и коd-dвом hp
-        elif event.type == METEORITEGENERATION:
-            '''new_meteorite = Meteorite(random.randint(1, WIDTH - 64), 0, random.randint(1, 6), random.randint(5, 15))
-            meteorite_sprites.add(new_meteorite)'''
+        # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
+        if event.type == METEORITEGENERATION:
             create_meteorite()
+        # Создание сломанного корабля
+        if event.type == BROKENSHIPGENERATION:
+            create_broken_ship()
+        # Начисленеи очков
+        if event.type == GIVEPOINTS:
+            points.add_points(100)
+            # print(points)
         # Вызов функции, производящей выстрел
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             space_ship.shoot()
         # движение
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
                 movement_y = -step
-            elif event.key == pygame.K_s:
+            if event.key == pygame.K_s:
                 movement_y = step
             if event.key == pygame.K_d:
                 movement_x = step
-            elif event.key == pygame.K_a:
+            if event.key == pygame.K_a:
                 movement_x = -step
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_w:
                 movement_y = 0
-            elif event.key == pygame.K_s:
+            if event.key == pygame.K_s:
                 movement_y = 0
             if event.key == pygame.K_d:
                 movement_x = 0
-            elif event.key == pygame.K_a:
+            if event.key == pygame.K_a:
                 movement_x = 0
 
     space_ship.move(movement_x, movement_y)
