@@ -1,8 +1,11 @@
+import time
+
 import pygame
 import os
 import sys
 import random
 import pygame_gui
+from math import sin, cos, radians
 from pygame import mixer
 
 
@@ -146,6 +149,10 @@ meteorite_sprites = pygame.sprite.Group()
 ship_sprite = pygame.sprite.Group()
 # группа аптечек
 heal_sprites = pygame.sprite.Group()
+# группа препятствия сломанный корабль
+broken_ship_sprites = pygame.sprite.Group()
+# группа вустрелов сломанного корабля
+shot_of_broken_ship_sprites = pygame.sprite.Group()
 
 
 # Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
@@ -155,17 +162,17 @@ easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
 # Список для сложного уровня
 hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
 
-min_meteorite_speed_for_easy_level = 1
-max_meteorite_speed_for_easy_level = 3
+min_meteorite_speed_for_easy_level = 90
+max_meteorite_speed_for_easy_level = 110
 # шанс на выпадения аптечки - 10%
 easy_level_heal_drop = (1, 10)
 
-min_meteorite_speed_for_hard_level = 4
-max_meteorite_speed_for_hard_level = 7
+min_meteorite_speed_for_hard_level = 110
+max_meteorite_speed_for_hard_level = 150
 # шанс на выпадения аптечки - 5%
 hard_level_heal_drop = (1, 20)
 # Тестовая установка уровня сложности
-level = 'hardw'
+level = 'hardx'
 if level == 'hard':
     meteorite_array = hard_meteorite_array
     min_meteorite_speed = min_meteorite_speed_for_hard_level
@@ -218,9 +225,13 @@ def create_meteorite():
         # опыт за разрушение астероида
         experience_for_kill = 300
 
-    new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
-                              meteorite_hp, meteorite_damage, meteorite_image,
-                              experience_for_kill, meteorite_type)
+    # new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
+    #                           meteorite_hp, meteorite_damage, meteorite_image,
+    #                           experience_for_kill, meteorite_type)
+
+    b_s = BrokenShip(meteorite_x, meteorite_y)
+
+
 
 
 # класс выстрелов
@@ -340,7 +351,7 @@ class SpaceShip(pygame.sprite.Sprite):
 
 # Класс припятствий
 class Meteorite(pygame.sprite.Sprite):
-    def __init__(self, x, y, speed, hp, damage, image, experience_for_kill, type) -> object:
+    def __init__(self, x, y, speed, hp, damage, image, experience_for_kill, type):
         super().__init__(meteorite_sprites)
         self.image = load_image(image)
         self.rect = self.image.get_rect()
@@ -354,6 +365,41 @@ class Meteorite(pygame.sprite.Sprite):
         self.damage = damage
         self.full_damage = True
         self.experience_for_kill = experience_for_kill
+
+        # координата для движения (промежуточные)
+        self.y_moving_coord = y
+
+    def update(self):
+        # движение корабля
+        self.y_moving_coord += self.speed / FPS
+        self.rect = self.rect.move(0, int(self.y_moving_coord - self.rect.y))
+
+        # попадание выстрела корабля
+        shot = pygame.sprite.spritecollideany(self, shots_sprites,
+                                              collided=pygame.sprite.collide_mask)
+        if not shot is None:
+            shots_sprites.remove(shot)
+            self.minus_hp(space_ship.get_damage())
+
+        # столкновение с метеоритом корябля
+        ship = pygame.sprite.spritecollideany(self, ship_sprite,
+                                              collided=pygame.sprite.collide_mask)
+        if not ship is None:
+            collision_sound.play()
+            meteorite_sprites.remove(self)
+            ship.change_heal_points('-', self.damage)
+
+        if self.hp <= self.max_hp / 2:
+            # Если метеорит разьился на мелкие кусочки, то его урон снижается вдвое
+            if self.full_damage:
+                self.damage //= 2
+                self.full_damage = False
+
+            if self.type == large:
+                self.image = load_image('large_asteroid_half_hp.png')
+            else:
+                self.image = load_image('asteroid_half_hp.png')
+            self.mask = pygame.mask.from_surface(self.image)
 
     """Метод, для уменьшеня количества hp при попадании"""
 
@@ -383,36 +429,140 @@ class Meteorite(pygame.sprite.Sprite):
     def get_experience(self):
         return self.experience_for_kill
 
+
+class ShotOfBrokenShip(pygame.sprite.Sprite):
+    def __init__(self, x, y, type_shot, ship_speed):
+        super().__init__(shot_of_broken_ship_sprites)
+        self.image = load_image(f'enemy_shot_round_{str(type_shot)}.png')
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+        self.mask = pygame.mask.from_surface(self.image)
+        self.speed = 110
+        # скорость корабля
+        self.ship_speed = ship_speed
+        # дамаг при попадании высрела
+        self.damage = 10
+        # тип выстрела (откуда идет)
+        self.type_shot = type_shot
+
+        # координата для движения
+        self.y_moving_coord = y
+        self.x_moving_coord = x
+
     def update(self):
-        """движение метеорита"""
-        self.rect = self.rect.move(0, self.speed)
+        # движение
+        if self.type_shot == 0:
+            self.y_moving_coord -= self.speed / FPS
 
-        # попадание выстрела
-        shot = pygame.sprite.spritecollideany(self, shots_sprites,
-                                              collided=pygame.sprite.collide_mask)
-        if not shot is None:
-            shots_sprites.remove(shot)
-            self.minus_hp(space_ship.get_damage())
+        elif self.type_shot == 1:
+            self.y_moving_coord -= sin(radians(18)) * self.speed / FPS
+            self.x_moving_coord += cos(radians(18)) * self.speed / FPS
 
-        # столкновение с метеоритом
+        elif self.type_shot == 2:
+            self.y_moving_coord -= sin(radians(-54)) * self.speed / FPS
+            self.x_moving_coord += cos(radians(-54)) * self.speed / FPS
+
+        elif self.type_shot == 3:
+            self.y_moving_coord -= sin(radians(234)) * self.speed / FPS
+            self.x_moving_coord += cos(radians(234)) * self.speed / FPS
+
+        elif self.type_shot == 4:
+            self.y_moving_coord -= sin(radians(162)) * self.speed / FPS
+            self.x_moving_coord += cos(radians(162)) * self.speed / FPS
+
+        if self.type_shot != 0:
+            self.y_moving_coord += self.ship_speed / FPS  # учитывается скорость движения корабля
+        self.rect = self.rect.move(int(self.x_moving_coord - self.rect.x), int(self.y_moving_coord - self.rect.y))
+
+        # удаление
+        if self.rect.x > WIDTH or self.rect.y > HEIGHT:
+            shot_of_broken_ship_sprites.remove(self)
+
+        # побадание в гг корябль
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
                                               collided=pygame.sprite.collide_mask)
         if not ship is None:
-            collision_sound.play()
-            meteorite_sprites.remove(self)
+            shot_of_broken_ship_sprites.remove(self)
             ship.change_heal_points('-', self.damage)
 
-        if self.hp <= self.max_hp / 2:
-            # Если метеорит разьился на мелкие кусочки, то его урон снижается вдвое
-            if self.full_damage:
-                self.damage //= 2
-                self.full_damage = False
 
-            if self.type == large:
-                self.image = load_image('large_asteroid_half_hp.png')
-            else:
-                self.image = load_image('asteroid_half_hp.png')
-            self.mask = pygame.mask.from_surface(self.image)
+class BrokenShip(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(broken_ship_sprites)
+        self.image = load_image('Broken_ship.png')
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+        self.speed = 80
+        self.hp = 55
+        # дамаг при столкновениии с конструкцией
+        self.damage = 40
+        # координата y для движения
+        self.y_moving_coord = y
+
+        # отсчет выстрелов
+        self.clock_self = pygame.time.Clock()
+        self.shot_time = 1000  # каждые shot_time миллисекунд удет выстрел
+        self.time_past = self.clock_self.tick()  # время прошло с предыдущего выстрела
+
+        # определяет откуда стреляет
+        # отсчитывается по часовой стрелки с верхней пушки - 0
+        # всего их 5 => 0-4
+        self.type_shot = random.randrange(1, 5)
+
+    def update(self):
+        # движение корабля
+        self.y_moving_coord += self.speed / FPS
+        self.rect = self.rect.move(0, int(self.y_moving_coord - self.rect.y))
+
+        # отсчет выстрелов
+        tick = self.clock_self.tick()
+        self.time_past += tick
+        if self.time_past // self.shot_time > 0:
+            self.time_past = self.time_past % tick
+            self.shoot(self.type_shot)
+            self.type_shot = (self.type_shot + 1) % 5
+
+        if self.rect.y > HEIGHT:
+            broken_ship_sprites.remove(self)
+
+        # побадание в гг корябль
+        ship = pygame.sprite.spritecollideany(self, ship_sprite,
+                                              collided=pygame.sprite.collide_mask)
+        if not ship is None:
+            broken_ship_sprites.remove(self)
+            ship.change_heal_points('-', self.damage)
+
+
+    # стрельба
+    def shoot(self, type_shot):
+        a = self.image.get_rect()[2]  # сторона картинки корабля
+
+        if type_shot == 0:
+            image_shot = load_image('enemy_shot_round_0.png')
+            x_shot = self.rect.x + self.image.get_rect()[2] // 2 - image_shot.get_rect()[2] // 2
+            y_shot = self.rect.y - image_shot.get_rect()[3]
+
+        elif type_shot == 1:
+            image_shot = load_image('enemy_shot_round_1.png')
+            x_shot = self.rect.x + round(a * 88 / 90)
+            y_shot = self.rect.y + round(a * 32 / 90) - round(image_shot.get_rect()[3] * 20 / 26)
+
+        elif type_shot == 2:
+            x_shot = self.rect.x + round(a * 72 / 90)
+            y_shot = self.rect.y + round(a * 8 / 9)
+
+        elif type_shot == 3:
+            image_shot = load_image('enemy_shot_round_3.png')
+            x_shot = self.rect.x + round(a * 2 / 9) - image_shot.get_rect()[2]
+            y_shot = self.rect.y + round(a * 8 / 9)
+
+        elif type_shot == 4:
+            image_shot = load_image('enemy_shot_round_4.png')
+            x_shot = self.rect.x + round(a * 4 / 90) - image_shot.get_rect()[2]
+            y_shot = self.rect.y + round(a * 32 / 90) - round(image_shot.get_rect()[3] * 20 / 26)
+
+        shot_of_broken_ship_sprites.add(ShotOfBrokenShip(x_shot, y_shot, self.type_shot, self.speed))
+
 
 
 # Создание экземпляра класса SpaceShip
@@ -483,6 +633,12 @@ while running:
 
     heal_sprites.draw(screen)
     heal_sprites.update()
+
+    broken_ship_sprites.draw(screen)
+    broken_ship_sprites.update()
+
+    shot_of_broken_ship_sprites.draw(screen)
+    shot_of_broken_ship_sprites.update()
 
     pygame.display.flip()
     clock.tick(FPS)
