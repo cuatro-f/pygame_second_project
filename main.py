@@ -54,6 +54,38 @@ screen = pygame.display.set_mode(SIZE)
 FPS = 60
 clock = pygame.time.Clock()
 main_theme.play(loops=-1)
+arcade = False
+
+# Скорость астероидов для легкого уровня
+min_meteorite_speed_for_easy_level = 90
+max_meteorite_speed_for_easy_level = 110
+# шанс на выпадения аптечки - 10% (для легкого уровня)
+easy_level_heal_drop = (1, 10)
+
+# Скорость астероидов для сложного уровня
+min_meteorite_speed_for_hard_level = 110
+max_meteorite_speed_for_hard_level = 150
+# шанс на выпадения аптечки - 5% (для сложного уровня)
+hard_level_heal_drop = (1, 20)
+
+
+# Скорость сломанного корабля (для легкого уроня)
+min_broken_ship_speed_for_easy_level = 60
+max_broken_ship_speed_for_easy_level = 90
+
+# Скорость сломанного корабля (для сложного уроня)
+min_broken_ship_speed_for_hard_level = 80
+max_broken_ship_speed_for_hard_level = 110
+
+# Време для начисления очков
+points_generation_time = 5000
+
+# Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
+# уровне сложности больших метеоритов должно быть меньше, чем на высоком
+# Список для легкого уровня сложности
+easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
+# Список для сложного уровня
+hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
 
 # менеджер для интерфейса
 manager = pygame_gui.UIManager(SIZE)
@@ -73,8 +105,104 @@ def terminate():
     sys.exit()
 
 
+# Выбор режима игры, аркада на данный момент = сложный уровень
+def choice_of_game_mode():
+    manager.clear_and_reset()
+    background = Background('start_fon_2.png', [0, 0])
+    arcade_mode_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 250), (150, 50)),
+        text='АРКАДА',
+        manager=manager,
+    )
+    easy_mode_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 305), (150, 30)),
+        text='ЛЕГКИЙ',
+        manager=manager,
+    )
+    hard_mode_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 340), (150, 30)),
+        text='СЛОЖНЫЙ',
+        manager=manager,
+    )
+    open_main_screen_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
+        text='НА ГЛАВНЫЙ',
+        manager=manager,
+    )
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == arcade_mode_button:
+                    meteorite_array = easy_meteorite_array
+                    min_meteorite_speed = min_meteorite_speed_for_easy_level
+                    max_meteorite_speed = max_meteorite_speed_for_easy_level
+                    meteorite_generation_time = 3000
+                    broken_ship_generation_time = 10000
+                    ufo_generation_time = 13000
+                    first_point, second_point = easy_level_heal_drop
+                    min_broken_ship_speed = min_broken_ship_speed_for_hard_level
+                    max_broken_ship_speed = max_broken_ship_speed_for_hard_level
+                    return (meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
+                            broken_ship_generation_time, ufo_generation_time, first_point, second_point,
+                            min_broken_ship_speed, max_broken_ship_speed)
+                if event.ui_element == easy_mode_button:
+                    meteorite_array = easy_meteorite_array
+                    min_meteorite_speed = min_meteorite_speed_for_easy_level
+                    max_meteorite_speed = max_meteorite_speed_for_easy_level
+                    meteorite_generation_time = 3000
+                    broken_ship_generation_time = 10000
+                    ufo_generation_time = 13000
+                    first_point, second_point = easy_level_heal_drop
+                    min_broken_ship_speed = min_broken_ship_speed_for_hard_level
+                    max_broken_ship_speed = max_broken_ship_speed_for_hard_level
+                    return (meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
+                            broken_ship_generation_time, ufo_generation_time, first_point, second_point,
+                            min_broken_ship_speed, max_broken_ship_speed)
+                if event.ui_element == hard_mode_button:
+                    meteorite_array = hard_meteorite_array
+                    min_meteorite_speed = min_meteorite_speed_for_hard_level
+                    max_meteorite_speed = max_meteorite_speed_for_hard_level
+                    meteorite_generation_time = 1000
+                    broken_ship_generation_time = 5000
+                    ufo_generation_time = 8000
+                    first_point, second_point = hard_level_heal_drop
+                    min_broken_ship_speed = min_broken_ship_speed_for_easy_level
+                    max_broken_ship_speed = max_broken_ship_speed_for_easy_level
+                    return (meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
+                            broken_ship_generation_time, ufo_generation_time, first_point, second_point,
+                            min_broken_ship_speed, max_broken_ship_speed)
+                if event.ui_element == open_main_screen_button:
+                    start_screen()
+                    return
+            manager.process_events(event)
+
+        # Отображения заднего фона
+        screen.fill([255, 255, 255])
+        screen.blit(background.image, background.rect)
+
+        time_delta = clock.tick(FPS) / 1000.0
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
+        pygame.display.flip()
+
+
 # начальный экран
 def start_screen():
+    global meteorite_array
+    global min_meteorite_speed
+    global max_meteorite_speed
+    global meteorite_generation_time
+    global broken_ship_generation_time
+    global ufo_generation_time
+    global first_point
+    global second_point
+    global min_broken_ship_speed
+    global max_broken_ship_speed
+    manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
 
     # ПОТОМ НАДО БУДЕТ СДЕЛАТЬ ВЫПАДАЮЩИЙ СПИСОК С ВЫБОРОМ УРОВНЯ
@@ -102,6 +230,9 @@ def start_screen():
                 terminate()
             if event.type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == play_button:
+                    meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,\
+                        broken_ship_generation_time, ufo_generation_time, first_point, second_point,\
+                        min_broken_ship_speed, max_broken_ship_speed = choice_of_game_mode()
                     return
             manager.process_events(event)
 
@@ -141,9 +272,10 @@ small_asteroid_size = load_image('small_asteroid.png').get_rect()[2:]
 medium_asteroid_size = load_image('medium_asteroid.png').get_rect()[2:]
 # Большого астероида
 large_asteroid_size = load_image('large_asteroid.png').get_rect()[2:]
-
 # Размер сломанного корабля
 broken_ship_size = load_image('Broken_ship.png').get_rect()[2:]
+# Развмер НЛО
+ufo_size = load_image('ufo.png').get_rect()[2:]
 
 # группа выстрелов
 shots_sprites = pygame.sprite.Group()
@@ -155,63 +287,10 @@ ship_sprite = pygame.sprite.Group()
 heal_sprites = pygame.sprite.Group()
 # группа препятствия сломанный корабль
 broken_ship_sprites = pygame.sprite.Group()
-# группа вустрелов сломанного корабля
+# группа выстрелов сломанного корабля
 shot_of_broken_ship_sprites = pygame.sprite.Group()
 # группа нло
 ufo_sprites = pygame.sprite.Group()
-
-
-# Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
-# уровне сложности больших метеоритов должно быть меньше, чем на высоком
-# Список для легкого уровня сложности
-easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
-# Список для сложного уровня
-hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
-
-# Скорость астероидов для легкого уровня
-min_meteorite_speed_for_easy_level = 90
-max_meteorite_speed_for_easy_level = 110
-# шанс на выпадения аптечки - 10% (для легкого уровня)
-easy_level_heal_drop = (1, 10)
-
-# Скорость астероидов для сложного уровня
-min_meteorite_speed_for_hard_level = 110
-max_meteorite_speed_for_hard_level = 150
-# шанс на выпадения аптечки - 5% (для сложного уровня)
-hard_level_heal_drop = (1, 20)
-
-
-# Скорость сломанного корабля (для легкого уроня)
-min_broken_ship_speed_for_easy_level = 60
-max_broken_ship_speed_for_easy_level = 90
-
-# Скорость сломанного корабля (для сложного уроня)
-min_broken_ship_speed_for_hard_level = 80
-max_broken_ship_speed_for_hard_level = 110
-
-# Тестовая установка уровня сложности
-level = 'hard'
-if level == 'hard':
-    meteorite_array = hard_meteorite_array
-    min_meteorite_speed = min_meteorite_speed_for_hard_level
-    max_meteorite_speed = max_meteorite_speed_for_hard_level
-    meteorite_generation_time = 1000
-    broken_ship_generation_time = 5000
-    first_point, second_point = hard_level_heal_drop
-    min_broken_ship_speed = min_broken_ship_speed_for_easy_level
-    max_broken_ship_speed = max_broken_ship_speed_for_easy_level
-else:
-    meteorite_array = easy_meteorite_array
-    min_meteorite_speed = min_meteorite_speed_for_easy_level
-    max_meteorite_speed = max_meteorite_speed_for_easy_level
-    meteorite_generation_time = 3000
-    broken_ship_generation_time = 10000
-    first_point, second_point = easy_level_heal_drop
-    min_broken_ship_speed = min_broken_ship_speed_for_hard_level
-    max_broken_ship_speed = max_broken_ship_speed_for_hard_level
-
-# Време для начисления очков
-points_generation_time = 5000
 
 
 # типы метеоритов
@@ -220,7 +299,6 @@ medium = 'medium'
 large = 'large'
 
 
-# ИЗМЕНЕНО НА НЛО
 # Создание метеорита
 def create_meteorite():
     meteorite_y = 0
@@ -253,14 +331,18 @@ def create_meteorite():
         # опыт за разрушение астероида
         experience_for_kill = 300
 
-    # new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
-    #                           meteorite_hp, meteorite_damage, meteorite_image,
-    #                           experience_for_kill, meteorite_type)
-
-    ufo = Ufo(meteorite_x, meteorite_y)
+    new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
+                              meteorite_hp, meteorite_damage, meteorite_image,
+                              experience_for_kill, meteorite_type)
 
 
-# ИЗМЕНЕНО НА НЛО
+# Создание НЛО
+def create_ufo():
+    ufo_x = random.randint(1, WIDTH - ufo_size[0])
+    ufo_y = 0
+    ufo = Ufo(ufo_x, ufo_y)
+
+
 # Создание сломанного корабля
 def create_broken_ship():
     generation_array = [1, 2]
@@ -277,9 +359,7 @@ def create_broken_ship():
         if broken_ship_x == WIDTH - broken_ship_size[0]:
             broken_ship_speed *= -1
 
-    # broken_ship = BrokenShip(broken_ship_x, broken_ship_y, broken_ship_speed, move_direction)
-
-    ufo = Ufo(broken_ship_x, broken_ship_y)
+    broken_ship = BrokenShip(broken_ship_x, broken_ship_y, broken_ship_speed, move_direction)
 
 
 # класс выстрелов
@@ -387,7 +467,6 @@ class SpaceShip(pygame.sprite.Sprite):
         elif action == '-':
             self.hp -= value
             points.minus_points(50)
-            print(points.get_points())
 
     """ Метод, непозволяющий кораблю вылететь за пределы карты """
 
@@ -739,6 +818,7 @@ class Ufo(pygame.sprite.Sprite):
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
                                               collided=pygame.sprite.collide_mask)
         if not ship is None:
+            collision_sound.play()
             ufo_sprites.remove(self)
             ship.change_heal_points('-', self.damage)
 
@@ -761,7 +841,7 @@ class Ufo(pygame.sprite.Sprite):
 
             # когда нло разрушается,то он удалается
             ufo_sprites.remove(self)
-            points.add_points(400)
+            points.minus_points(1000)
 
 
 # Класс очков
@@ -791,11 +871,14 @@ movement_x = movement_y = 0
 METEORITEGENERATION = pygame.USEREVENT + 1
 pygame.time.set_timer(METEORITEGENERATION, meteorite_generation_time)
 # Создание события, которое начисляет очки
-GIVEPOINTS = pygame.USEREVENT + 1
+GIVEPOINTS = pygame.USEREVENT + 2
 pygame.time.set_timer(GIVEPOINTS, points_generation_time)
 # Создание события генерации сломанного корабля
-BROKENSHIPGENERATION = pygame.USEREVENT + 1
+BROKENSHIPGENERATION = pygame.USEREVENT + 3
 pygame.time.set_timer(BROKENSHIPGENERATION, broken_ship_generation_time)
+# Создания события, которое создает НЛО
+UFOGENERATION = pygame.USEREVENT + 4
+pygame.time.set_timer(UFOGENERATION, ufo_generation_time)
 
 points = Points()
 
@@ -816,12 +899,13 @@ while running:
             create_meteorite()
         # Создание сломанного корабля
         if event.type == BROKENSHIPGENERATION:
-            pass
-            # create_broken_ship()
+            create_broken_ship()
         # Начисленеи очков
         if event.type == GIVEPOINTS:
             points.add_points(100)
-            # print(points)
+            print(points.get_points())
+        if event.type == UFOGENERATION:
+            create_ufo()
         # Вызов функции, производящей выстрел
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             space_ship.shoot()
