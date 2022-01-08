@@ -157,6 +157,8 @@ heal_sprites = pygame.sprite.Group()
 broken_ship_sprites = pygame.sprite.Group()
 # группа вустрелов сломанного корабля
 shot_of_broken_ship_sprites = pygame.sprite.Group()
+# группа нло
+ufo_sprites = pygame.sprite.Group()
 
 
 # Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
@@ -218,6 +220,7 @@ medium = 'medium'
 large = 'large'
 
 
+# ИЗМЕНЕНО НА НЛО
 # Создание метеорита
 def create_meteorite():
     meteorite_y = 0
@@ -250,11 +253,14 @@ def create_meteorite():
         # опыт за разрушение астероида
         experience_for_kill = 300
 
-    new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
-                              meteorite_hp, meteorite_damage, meteorite_image,
-                              experience_for_kill, meteorite_type)
+    # new_meteorite = Meteorite(meteorite_x, meteorite_y, meteorite_speed,
+    #                           meteorite_hp, meteorite_damage, meteorite_image,
+    #                           experience_for_kill, meteorite_type)
+
+    ufo = Ufo(meteorite_x, meteorite_y)
 
 
+# ИЗМЕНЕНО НА НЛО
 # Создание сломанного корабля
 def create_broken_ship():
     generation_array = [1, 2]
@@ -271,7 +277,9 @@ def create_broken_ship():
         if broken_ship_x == WIDTH - broken_ship_size[0]:
             broken_ship_speed *= -1
 
-    broken_ship = BrokenShip(broken_ship_x, broken_ship_y, broken_ship_speed, move_direction)
+    # broken_ship = BrokenShip(broken_ship_x, broken_ship_y, broken_ship_speed, move_direction)
+
+    ufo = Ufo(broken_ship_x, broken_ship_y)
 
 
 # класс выстрелов
@@ -487,7 +495,7 @@ class Meteorite(pygame.sprite.Sprite):
 
 # Класс выстрелов сломанного корабля
 class ShotOfBrokenShip(pygame.sprite.Sprite):
-    def __init__(self, x, y, type_shot, ship_speed):
+    def __init__(self, x, y, type_shot, ship_speed, ship_move_direction):
         super().__init__(shot_of_broken_ship_sprites)
         self.image = load_image(f'enemy_shot_round_{str(type_shot)}.png')
         self.rect = self.image.get_rect()
@@ -501,6 +509,8 @@ class ShotOfBrokenShip(pygame.sprite.Sprite):
         # тип выстрела (откуда идет)
         self.type_shot = type_shot
 
+        # направление
+        self.move_direction = ship_move_direction
         # координата для движения
         self.y_moving_coord = y
         self.x_moving_coord = x
@@ -526,13 +536,15 @@ class ShotOfBrokenShip(pygame.sprite.Sprite):
             self.y_moving_coord -= sin(radians(162)) * self.speed / FPS
             self.x_moving_coord += cos(radians(162)) * self.speed / FPS
 
-        if self.type_shot != 0:
-            self.y_moving_coord += self.ship_speed / FPS  # учитывается скорость движения корабля
-        self.rect = self.rect.move(int(self.x_moving_coord - self.rect.x), int(self.y_moving_coord - self.rect.y))
+        # учитывается скорость движения корабля
+        if self.move_direction == 'y':
+            if self.type_shot != 0:
+                self.y_moving_coord += self.ship_speed / FPS
 
-        # удаление
-        if self.rect.x > WIDTH or self.rect.y > HEIGHT:
-            shot_of_broken_ship_sprites.remove(self)
+        elif self.move_direction == 'x':
+            self.x_moving_coord += self.ship_speed / FPS
+
+        self.rect = self.rect.move(int(self.x_moving_coord - self.rect.x), int(self.y_moving_coord - self.rect.y))
 
         # побадание в гг корябль
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
@@ -552,6 +564,7 @@ class BrokenShip(pygame.sprite.Sprite):
     def __init__(self, x, y, speed,  move_direction):
         super().__init__(broken_ship_sprites)
         self.image = load_image('Broken_ship.png')
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
         self.speed = speed
@@ -643,7 +656,7 @@ class BrokenShip(pygame.sprite.Sprite):
             x_shot = self.rect.x + round(a * 4 / 90) - image_shot.get_rect()[2]
             y_shot = self.rect.y + round(a * 32 / 90) - round(image_shot.get_rect()[3] * 20 / 26)
 
-        shot_of_broken_ship_sprites.add(ShotOfBrokenShip(x_shot, y_shot, self.type_shot, self.speed))
+        shot_of_broken_ship_sprites.add(ShotOfBrokenShip(x_shot, y_shot, self.type_shot, self.speed, self.move_direction))
 
     # Уменьшение hp
     def minus_hp(self, count):
@@ -661,6 +674,94 @@ class BrokenShip(pygame.sprite.Sprite):
 
     def get_hp(self):
         return self.hp
+
+
+# класс нло
+class Ufo(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(ufo_sprites)
+        self.image = load_image('ufo.png')
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+        self.damage = 30
+        self.hp = 20
+        self.mask = pygame.mask.from_surface(self.image)
+        self.speed_y = 85
+
+        # сколько пикселей пройдет в данном направлении
+        self.change_direction = self.generate_change_direction()
+        # из какой координаты начинается движение в данном направлении
+        self.last_x = x
+        # скорость в данном направлении
+        self.speed_x = self.generate_speed_x()
+        # направо или навлево двигаеся в данной позиции списка self.change_direction_list
+        self.left_right_dir = 1
+
+        # координата для движения
+        self.y_moving_coord = y
+        self.x_moving_coord = x
+
+    def generate_speed_x(self):
+        return random.randrange(5, 160)
+
+    def generate_change_direction(self):
+        return random.randrange(30, 350)
+
+    def update(self):
+        self.y_moving_coord += self.speed_y / FPS
+
+        # смена позиции-направления по оси x
+        if abs(self.last_x - self.rect.x) >= self.change_direction:
+            self.change_direction = self.generate_change_direction()
+            self.speed_x = self.generate_speed_x()
+            self.last_x = self.rect.x
+            self.left_right_dir *= -1
+
+        # чтобы не выходил за экран вправо и влево
+        if self.rect.x + self.image.get_rect()[2] >= WIDTH:
+            self.left_right_dir = -1
+            self.change_direction = self.generate_change_direction()
+            self.last_x = self.rect.x
+        elif self.rect.x <= 0:
+            self.left_right_dir = 1
+            self.change_direction = self.generate_change_direction()
+            self.last_x = self.rect.x
+
+        self.x_moving_coord += self.left_right_dir * self.speed_x / FPS
+
+        self.rect = self.rect.move(int(self.x_moving_coord - self.rect.x), int(self.y_moving_coord - self.rect.y))
+
+        # удаление после вылета за карту
+        if self.rect.y > HEIGHT:
+            ufo_sprites.remove(self)
+
+        # побадание в гг корябль
+        ship = pygame.sprite.spritecollideany(self, ship_sprite,
+                                              collided=pygame.sprite.collide_mask)
+        if not ship is None:
+            ufo_sprites.remove(self)
+            ship.change_heal_points('-', self.damage)
+
+        # попадание выстрела гг корабля с нло
+        shot = pygame.sprite.spritecollideany(self, shots_sprites,
+                                              collided=pygame.sprite.collide_mask)
+        if not shot is None:
+            shots_sprites.remove(shot)
+            self.minus_hp(space_ship.get_damage())
+
+    # Уменьшение hp
+    def minus_hp(self, count):
+        self.hp -= count
+        if self.hp <= 0:
+            # выпадение хилки
+            # first_point = second_point = 2  # 100% шанс
+            if random.randint(first_point, second_point) == 2:
+                # размер картинки хилки 40*40
+                Heal((self.image.get_rect()[2] - 40) // 2 + self.rect.x, self.rect.y)
+
+            # когда нло разрушается,то он удалается
+            ufo_sprites.remove(self)
+            points.add_points(400)
 
 
 # Класс очков
@@ -715,7 +816,8 @@ while running:
             create_meteorite()
         # Создание сломанного корабля
         if event.type == BROKENSHIPGENERATION:
-            create_broken_ship()
+            pass
+            # create_broken_ship()
         # Начисленеи очков
         if event.type == GIVEPOINTS:
             points.add_points(100)
@@ -766,6 +868,9 @@ while running:
 
     shot_of_broken_ship_sprites.draw(screen)
     shot_of_broken_ship_sprites.update()
+
+    ufo_sprites.draw(screen)
+    ufo_sprites.update()
 
     pygame.display.flip()
     clock.tick(FPS)
