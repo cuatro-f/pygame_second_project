@@ -820,6 +820,7 @@ class Ufo(pygame.sprite.Sprite):
         if not ship is None:
             collision_sound.play()
             ufo_sprites.remove(self)
+            points.minus_points(950)
             ship.change_heal_points('-', self.damage)
 
         # попадание выстрела гг корабля с нло
