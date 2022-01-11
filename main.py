@@ -205,7 +205,6 @@ def start_screen():
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
 
-    # ПОТОМ НАДО БУДЕТ СДЕЛАТЬ ВЫПАДАЮЩИЙ СПИСОК С ВЫБОРОМ УРОВНЯ
     # кнопка запускающая игру
     play_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 250), (150, 50)),
@@ -245,6 +244,60 @@ def start_screen():
         manager.draw_ui(screen)
 
         pygame.display.flip()
+
+
+def final_screen():
+    manager.clear_and_reset()
+    background = Background('space_1.png', [0, 0])
+
+    # координаты воображемой рамки в которой записан текст
+    alignment_x = 60
+    alignment_x_end = 340
+    alignment_y = 180
+
+    # ввод текста
+    entry = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.Rect(alignment_x_end - 120, alignment_y + 45, 120, 30),
+        manager=manager,
+    )
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+                person_name = entry.get_text()
+                print(person_name)  ################################################################# ИМЯ ИГРОкА ДЛЯ ТАБЛИЦЫ ЗДЕСЬ
+            manager.process_events(event)
+
+        # Отображения заднего фона
+        screen.fill([255, 255, 255])
+        screen.blit(background.image, background.rect)
+
+        # текст
+        font1 = pygame.font.Font(None, 60)
+        text = font1.render('Game over', True, pygame.Color(229, 43, 80))
+        text_x = WIDTH // 2 - text.get_width() // 2
+        text_y = 100
+        screen.blit(text, (text_x, text_y))
+
+        font2 = pygame.font.Font(None, 24)
+        score_t = font2.render('Счёт: ', True, pygame.Color(255, 255, 255))
+        screen.blit(score_t, (alignment_x, alignment_y))
+
+        pygame.draw.line(screen, pygame.Color(255, 255, 255),
+                         (alignment_x, alignment_y + 25), (alignment_x_end, alignment_y + 25))
+
+        name_t = font2.render('Имя: ', True, pygame.Color(255, 255, 255))
+        screen.blit(name_t, (alignment_x, alignment_y + 50))
+
+        time_delta = clock.tick(FPS) / 1000.0
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
+        pygame.display.flip()
+
+# final_screen()
 
 
 # пауза
@@ -362,26 +415,6 @@ def create_broken_ship():
     broken_ship = BrokenShip(broken_ship_x, broken_ship_y, broken_ship_speed, move_direction)
 
 
-# класс выстрелов
-class Shot(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__(shots_sprites)
-        self.image = load_image('shot_0.png')
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-        self.mask = pygame.mask.from_surface(self.image)
-        # скорость выстрела
-        self.v = -10
-
-    def update(self):
-        self.rect = self.rect.move(0, self.v)
-        # Удаление выстрела, если он вылетел за пределы карты
-        # Условие, позволяющее убирать выстрелы, вылетевшие за пределы карты
-        if self.rect.y <= 0:
-            shots_sprites.remove(self)
-
-
 # Класс аптечек
 class Heal(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -410,12 +443,67 @@ class Heal(pygame.sprite.Sprite):
             heal_sprites.remove(self)
 
 
+# Класс линии здоровья
+class HpLine:
+    def __init__(self, max_hp):
+        self.max_hp = max_hp
+        self.x, self.y = 10, 565
+        self.width, self.height = 380, 15
+        self.color = pygame.Color(60, 170, 60)
+
+        self.draw_hp(max_hp)
+
+    def draw_hp(self, hp):
+        # рамка
+        pygame.draw.rect(screen, pygame.Color(53, 0, 134),
+                         (self.x - 2, self.y - 2, self.width + 3, self.height + 3), width=2)
+
+        # цвет полоски в зависимости от хп
+        if hp / self.max_hp <= 0.35:
+            self.color = pygame.Color(255, 219, 88)
+        elif hp / self.max_hp <= 0.2:
+            self.color = pygame.Color(255, 36, 0)
+
+        # линия здоровья
+        pygame.draw.rect(screen, self.color,
+                         (self.x, self.y, self.width * hp / self.max_hp, self.height))
+
+        # текст хп
+        font = pygame.font.Font(None, 20)
+        text = font.render('hp', True, pygame.Color(53, 0, 134))
+        text_x = self.x + self.width // 2 - text.get_width() // 2
+        text_y = self.y + self.height // 2 - text.get_height() // 2
+        screen.blit(text, (text_x, text_y))
+
+
+# класс выстрелов
+class Shot(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(shots_sprites)
+        self.image = load_image('shot_0.png')
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.mask = pygame.mask.from_surface(self.image)
+        # скорость выстрела
+        self.v = -10
+
+    def update(self):
+        self.rect = self.rect.move(0, self.v)
+        # Удаление выстрела, если он вылетел за пределы карты
+        # Условие, позволяющее убирать выстрелы, вылетевшие за пределы карты
+        if self.rect.y <= 0:
+            shots_sprites.remove(self)
+
+
+
 # Класс корабля
 class SpaceShip(pygame.sprite.Sprite):
     def __init__(self, speed, hp, damage):
         super().__init__(ship_sprite)
         self.speed = speed
         self.hp = hp
+        self.hp_line = HpLine(self.hp)
         self.max_hp = hp
         self.damage = damage
 
@@ -468,9 +556,12 @@ class SpaceShip(pygame.sprite.Sprite):
             self.hp -= value
             points.minus_points(50)
 
-    """ Метод, непозволяющий кораблю вылететь за пределы карты """
 
+    """ Метод, непозволяющий кораблю вылететь за пределы карты """
     def update(self, *args):
+        # обновление полоски хп
+        self.hp_line.draw_hp(self.hp)
+
         if self.get_cords()[0] <= 0:
             self.set_cords(1, self.get_cords()[1])
         if self.get_cords()[1] <= 0:
@@ -883,6 +974,7 @@ pygame.time.set_timer(UFOGENERATION, ufo_generation_time)
 
 points = Points()
 
+
 running = True
 while running:
     # Задний фон
@@ -931,6 +1023,10 @@ while running:
                 movement_x = 0
 
     space_ship.move(movement_x, movement_y)
+
+    # когда гг корабль умирает игра заканчивается
+    if space_ship.hp <= 0:
+        final_screen()
 
     # Отображения заднего фона
     screen.fill([255, 255, 255])
