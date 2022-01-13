@@ -879,11 +879,11 @@ def choice_of_game_mode():
     )
 
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for choice_of_game_mode_event in pygame.event.get():
+            if choice_of_game_mode_event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == arcade_mode_button:
+            if choice_of_game_mode_event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if choice_of_game_mode_event.ui_element == arcade_mode_button:
                     meteorite_array = easy_meteorite_array
                     min_meteorite_speed = min_meteorite_speed_for_easy_level
                     max_meteorite_speed = max_meteorite_speed_for_easy_level
@@ -897,7 +897,7 @@ def choice_of_game_mode():
                             broken_ship_generation_time, ufo_generation_time, first_point, second_point,
                             min_broken_ship_speed, max_broken_ship_speed)'''
                     main()
-                if event.ui_element == easy_mode_button:
+                if choice_of_game_mode_event.ui_element == easy_mode_button:
                     meteorite_array = easy_meteorite_array
                     min_meteorite_speed = min_meteorite_speed_for_easy_level
                     max_meteorite_speed = max_meteorite_speed_for_easy_level
@@ -911,7 +911,7 @@ def choice_of_game_mode():
                             broken_ship_generation_time, ufo_generation_time, first_point, second_point,
                             min_broken_ship_speed, max_broken_ship_speed)'''
                     main()
-                if event.ui_element == hard_mode_button:
+                if choice_of_game_mode_event.ui_element == hard_mode_button:
                     meteorite_array = hard_meteorite_array
                     min_meteorite_speed = min_meteorite_speed_for_hard_level
                     max_meteorite_speed = max_meteorite_speed_for_hard_level
@@ -925,10 +925,10 @@ def choice_of_game_mode():
                     '''(meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
                             broken_ship_generation_time, ufo_generation_time, first_point, second_point,
                             min_broken_ship_speed, max_broken_ship_speed)'''
-                if event.ui_element == open_main_screen_button:
+                if choice_of_game_mode_event.ui_element == open_main_screen_button:
                     start_screen()
                     return
-            manager.process_events(event)
+            manager.process_events(choice_of_game_mode_event)
 
         # Отображения заднего фона
         screen.fill([255, 255, 255])
@@ -945,7 +945,6 @@ def choice_of_game_mode():
 def start_screen():
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
-
     # кнопка запускающая игру
     play_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 250), (150, 50)),
@@ -965,13 +964,13 @@ def start_screen():
     )
 
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for start_screen_event in pygame.event.get():
+            if start_screen_event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == play_button:
+            if start_screen_event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if start_screen_event.ui_element == play_button:
                     choice_of_game_mode()
-            manager.process_events(event)
+            manager.process_events(start_screen_event)
 
         # Отображения заднего фона
         screen.fill([255, 255, 255])
@@ -1000,13 +999,13 @@ def final_screen():
     )
 
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for final_screen_event in pygame.event.get():
+            if final_screen_event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+            if final_screen_event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
                 person_name = entry.get_text()
                 start_screen()
-            manager.process_events(event)
+            manager.process_events(final_screen_event)
 
         # Отображения заднего фона
         screen.fill([255, 255, 255])
@@ -1034,8 +1033,6 @@ def final_screen():
         manager.draw_ui(screen)
 
         pygame.display.flip()
-
-# final_screen()
 
 
 # пауза
