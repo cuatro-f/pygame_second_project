@@ -8,6 +8,8 @@ import pygame_gui
 from math import sin, cos, radians
 from pygame import mixer
 
+from data_base import get_information, update_data_base
+
 
 # Загрузка изображения
 def load_image(name, colorkey=None):
@@ -71,14 +73,17 @@ hard_level_heal_drop = (1, 20)
 
 # Скорость сломанного корабля (для легкого уроня)
 min_broken_ship_speed_for_easy_level = 60
-max_broken_ship_speed_for_easy_level = 90
+max_broken_ship_speed_for_easy_level = 80
 
 # Скорость сломанного корабля (для сложного уроня)
-min_broken_ship_speed_for_hard_level = 80
-max_broken_ship_speed_for_hard_level = 110
+min_broken_ship_speed_for_hard_level = 70
+max_broken_ship_speed_for_hard_level = 100
 
 # Време для начисления очков
 points_generation_time = 5000
+
+# Время увеличения уровня игры для аркады
+level_change_time = 0
 
 # Список с числами, которые отображают размер метеорита (на разные уровни сложности - разные списки, т.к. на легком
 # уровне сложности больших метеоритов должно быть меньше, чем на высоком
@@ -86,6 +91,8 @@ points_generation_time = 5000
 easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
 # Список для сложного уровня
 hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
+
+arcade_mode = False
 
 meteorite_array = easy_meteorite_array
 min_meteorite_speed = min_meteorite_speed_for_easy_level
@@ -271,7 +278,6 @@ class SpaceShip(pygame.sprite.Sprite):
         elif action == '-':
             self.hp -= value
             points.minus_points(50)
-
 
     """ Метод, непозволяющий кораблю вылететь за пределы карты """
     def update(self, *args):
@@ -737,6 +743,15 @@ manager = pygame_gui.UIManager(SIZE)
 
 
 def game():
+    global min_meteorite_speed
+    global max_meteorite_speed
+    global meteorite_generation_time
+    global broken_ship_generation_time
+    global ufo_generation_time
+    global level_change_time
+    global first_point, second_point
+    global min_broken_ship_speed
+    global max_broken_ship_speed
     # Создание экземпляра класса SpaceShip
     # Аргументы: Скоргость, hp, урон
     space_ship = SpaceShip(10, 100, 5)
@@ -756,88 +771,162 @@ def game():
     UFOGENERATION = pygame.USEREVENT + 4
     pygame.time.set_timer(UFOGENERATION, ufo_generation_time)
 
+    LEVELCHANGE = pygame.USEREVENT + 5
+    pygame.time.set_timer(LEVELCHANGE, level_change_time)
+
     points = Points()
+
+    paused = False
 
     running = True
     while running:
         # Задний фон
-        background = Background("space_1.png", [0, 0])
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return terminate
-            # пауза
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    print('pause')
-                    return pause_screen
-            # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
-            if event.type == METEORITEGENERATION:
-                create_meteorite()
-            # Создание сломанного корабля
-            if event.type == BROKENSHIPGENERATION:
-                create_broken_ship()
-            # Начисленеи очков
-            if event.type == GIVEPOINTS:
-                points.add_points(100)
-            if event.type == UFOGENERATION:
-                create_ufo()
-            # Вызов функции, производящей выстрел
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                space_ship.shoot()
-            # движение
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_w:
-                    movement_y = -step
-                if event.key == pygame.K_s:
-                    movement_y = step
-                if event.key == pygame.K_d:
-                    movement_x = step
-                if event.key == pygame.K_a:
-                    movement_x = -step
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_w:
-                    movement_y = 0
-                if event.key == pygame.K_s:
-                    movement_y = 0
-                if event.key == pygame.K_d:
-                    movement_x = 0
-                if event.key == pygame.K_a:
-                    movement_x = 0
+        if not paused:
+            background = Background("space_1.png", [0, 0])
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return terminate
+                # пауза
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        '''print('pause')
+                        return pause_screen'''
+                        paused = True
+                # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
+                if event.type == METEORITEGENERATION:
+                    create_meteorite()
+                if event.type == LEVELCHANGE:
+                    if min_meteorite_speed <= 150:
+                        min_meteorite_speed += 10
+                    if meteorite_generation_time < 1000:
+                        meteorite_generation_time -= 1000
+                    if max_meteorite_speed <= 210:
+                        max_meteorite_speed += 10
+                    if broken_ship_generation_time < 8000:
+                        broken_ship_generation_time -= 1000
+                    if ufo_generation_time < 10000:
+                        ufo_generation_time -= 1000
+                    if level_change_time <= 29000:
+                        level_change_time += 1000
+                    if level_change_time > 29000:
+                        level_change_time = 0
+                    if min_broken_ship_speed <= 100:
+                        min_broken_ship_speed += 10
+                    if max_broken_ship_speed <= 140:
+                        max_broken_ship_speed += 10
+                    # Создание события при которм появляются метеориты
+                    METEORITEGENERATION = pygame.USEREVENT + 1
+                    pygame.time.set_timer(METEORITEGENERATION, meteorite_generation_time)
+                    # Создание события, которое начисляет очки
+                    GIVEPOINTS = pygame.USEREVENT + 2
+                    pygame.time.set_timer(GIVEPOINTS, points_generation_time)
+                    # Создание события генерации сломанного корабля
+                    BROKENSHIPGENERATION = pygame.USEREVENT + 3
+                    pygame.time.set_timer(BROKENSHIPGENERATION, broken_ship_generation_time)
+                    # Создания события, которое создает НЛО
+                    UFOGENERATION = pygame.USEREVENT + 4
+                    pygame.time.set_timer(UFOGENERATION, ufo_generation_time)
+                    LEVELCHANGE = pygame.USEREVENT + 5
+                    pygame.time.set_timer(LEVELCHANGE, level_change_time)
+                # Создание сломанного корабля
+                if event.type == BROKENSHIPGENERATION:
+                    create_broken_ship()
+                # Начисленеи очков
+                if event.type == GIVEPOINTS:
+                    points.add_points(100)
+                if event.type == UFOGENERATION:
+                    create_ufo()
+                # Вызов функции, производящей выстрел
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    space_ship.shoot()
+                # движение
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_w:
+                        movement_y = -step
+                    if event.key == pygame.K_s:
+                        movement_y = step
+                    if event.key == pygame.K_d:
+                        movement_x = step
+                    if event.key == pygame.K_a:
+                        movement_x = -step
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_w:
+                        movement_y = 0
+                    if event.key == pygame.K_s:
+                        movement_y = 0
+                    if event.key == pygame.K_d:
+                        movement_x = 0
+                    if event.key == pygame.K_a:
+                        movement_x = 0
 
-        space_ship.move(movement_x, movement_y)
+            space_ship.move(movement_x, movement_y)
 
-        # когда гг корабль умирает игра заканчивается
-        if space_ship.hp <= 0:
-            ship_sprite.remove(space_ship)
-            return final_screen
+            # когда гг корабль умирает игра заканчивается
+            if space_ship.hp <= 0:
+                ship_sprite.remove(space_ship)
+                return final_screen(points.count)
 
-        # Отображения заднего фона
-        screen.fill([255, 255, 255])
-        screen.blit(background.image, background.rect)
+            # Отображения заднего фона
+            screen.fill([255, 255, 255])
+            screen.blit(background.image, background.rect)
 
-        meteorite_sprites.draw(screen)
-        meteorite_sprites.update(space_ship, points)
+            meteorite_sprites.draw(screen)
+            meteorite_sprites.update(space_ship, points)
 
-        shots_sprites.draw(screen)
-        shots_sprites.update()
+            shots_sprites.draw(screen)
+            shots_sprites.update()
 
-        ship_sprite.draw(screen)
-        ship_sprite.update(points)
+            ship_sprite.draw(screen)
+            ship_sprite.update(points)
 
-        heal_sprites.draw(screen)
-        heal_sprites.update(points)
+            heal_sprites.draw(screen)
+            heal_sprites.update(points)
 
-        broken_ship_sprites.draw(screen)
-        broken_ship_sprites.update(space_ship, points)
+            broken_ship_sprites.draw(screen)
+            broken_ship_sprites.update(space_ship, points)
 
-        shot_of_broken_ship_sprites.draw(screen)
-        shot_of_broken_ship_sprites.update(points)
+            shot_of_broken_ship_sprites.draw(screen)
+            shot_of_broken_ship_sprites.update(points)
 
-        ufo_sprites.draw(screen)
-        ufo_sprites.update(space_ship, points)
+            ufo_sprites.draw(screen)
+            ufo_sprites.update(space_ship, points)
 
-        pygame.display.flip()
-        clock.tick(FPS)
+            pygame.display.flip()
+            clock.tick(FPS)
+        else:
+            flag = False
+            manager.clear_and_reset()
+
+            end_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
+                text='Завершить игру',
+                manager=manager,
+            )
+            while True:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        return terminate
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_SPACE:
+                            paused = False
+                            flag = True
+                            movement_x, movement_y = 0, 0
+                            break
+                    if event.type == pygame.USEREVENT:
+                        if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                            if event.ui_element == end_button:
+                                return final_screen
+                    manager.process_events(event)
+
+                if flag:
+                    break
+
+                screen.blit(load_image('start_pause.png', -1), ((WIDTH - 128) // 2, (HEIGHT - 128) // 2))
+
+                time_delta = clock.tick(FPS) / 1000.0
+                manager.update(time_delta)
+                manager.draw_ui(screen)
+                pygame.display.flip()
 
 
 # Класс заднего фона
@@ -865,6 +954,10 @@ def choice_of_game_mode():
     global first_point, second_point
     global min_broken_ship_speed
     global max_broken_ship_speed
+    global arcade_mode
+    global easy_level_heal_drop
+    global hard_level_heal_drop
+    global level_change_time
 
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
@@ -896,47 +989,42 @@ def choice_of_game_mode():
             if choice_of_game_mode_event.type == pygame.USEREVENT:
                 if choice_of_game_mode_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if choice_of_game_mode_event.ui_element == arcade_mode_button:
-                        meteorite_array = easy_meteorite_array
-                        min_meteorite_speed = min_meteorite_speed_for_easy_level
-                        max_meteorite_speed = max_meteorite_speed_for_easy_level
-                        meteorite_generation_time = 3000
-                        broken_ship_generation_time = 10000
-                        ufo_generation_time = 13000
-                        first_point, second_point = easy_level_heal_drop
-                        min_broken_ship_speed = min_broken_ship_speed_for_hard_level
-                        max_broken_ship_speed = max_broken_ship_speed_for_hard_level
-                        '''return (meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
-                                broken_ship_generation_time, ufo_generation_time, first_point, second_point,
-                                min_broken_ship_speed, max_broken_ship_speed)'''
+                        # Режим аркады
+                        arcade_mode = True
+                        meteorite_array = hard_meteorite_array
+                        min_meteorite_speed = min_meteorite_speed_for_easy_level - 20
+                        max_meteorite_speed = max_meteorite_speed_for_easy_level - 20
+                        meteorite_generation_time = 5000
+                        broken_ship_generation_time = 17000
+                        ufo_generation_time = 20000
+                        level_change_time = 1000
+                        first_point, second_point = hard_level_heal_drop
+                        min_broken_ship_speed = min_broken_ship_speed_for_hard_level - 20
+                        max_broken_ship_speed = max_broken_ship_speed_for_hard_level - 20
                         return game
                     if choice_of_game_mode_event.ui_element == easy_mode_button:
+                        # Легкий уровень
                         meteorite_array = easy_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_easy_level
                         max_meteorite_speed = max_meteorite_speed_for_easy_level
                         meteorite_generation_time = 3000
                         broken_ship_generation_time = 10000
-                        ufo_generation_time = 13000
+                        # В легком режиме нет НЛО
+                        ufo_generation_time = 0
                         first_point, second_point = easy_level_heal_drop
                         min_broken_ship_speed = min_broken_ship_speed_for_hard_level
                         max_broken_ship_speed = max_broken_ship_speed_for_hard_level
-                        '''return (meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
-                                broken_ship_generation_time, ufo_generation_time, first_point, second_point,
-                                min_broken_ship_speed, max_broken_ship_speed)'''
                         return game
                     if choice_of_game_mode_event.ui_element == hard_mode_button:
                         meteorite_array = hard_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_hard_level
                         max_meteorite_speed = max_meteorite_speed_for_hard_level
-                        meteorite_generation_time = 1000
+                        meteorite_generation_time = 2000
                         broken_ship_generation_time = 5000
-                        ufo_generation_time = 8000
+                        ufo_generation_time = 12000
                         first_point, second_point = hard_level_heal_drop
                         min_broken_ship_speed = min_broken_ship_speed_for_easy_level
                         max_broken_ship_speed = max_broken_ship_speed_for_easy_level
-
-                        '''(meteorite_array, min_meteorite_speed, max_meteorite_speed, meteorite_generation_time,
-                                broken_ship_generation_time, ufo_generation_time, first_point, second_point,
-                                min_broken_ship_speed, max_broken_ship_speed)'''
                         return game
 
                     if choice_of_game_mode_event.ui_element == open_main_screen_button:
@@ -1001,7 +1089,7 @@ def start_screen():
         pygame.display.flip()
 
 
-def final_screen():
+def final_screen(points):
     manager.clear_and_reset()
     background = Background('space_1.png', [0, 0])
 
@@ -1029,14 +1117,11 @@ def final_screen():
                 return terminate
             if final_screen_event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
                 person_name = entry.get_text()
-                print('Имя игрока:', person_name)
+                update_data_base([person_name, points])
             if final_screen_event.type == pygame.USEREVENT:
                 if final_screen_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if final_screen_event.ui_element == menu_button:
                         return start_screen
-            # if final_screen_event.type == pygame_gui.UI_BUTTON_PRESSED:
-            #     if final_screen_event.ui_element == menu_button:
-            #         return start_screen
             manager.process_events(final_screen_event)
 
         # Отображения заднего фона
@@ -1067,37 +1152,6 @@ def final_screen():
         pygame.display.flip()
 
 
-# пауза
-def pause_screen():
-    manager.clear_and_reset()
-
-    end_button = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
-        text='Завершить игру',
-        manager=manager,
-    )
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return terminate
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    return game
-            if event.type == pygame.USEREVENT:
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == end_button:
-                        return final_screen
-            manager.process_events(event)
-
-        screen.blit(load_image('start_pause.png', -1), ((WIDTH - 128) // 2, (HEIGHT - 128) // 2))
-
-        time_delta = clock.tick(FPS) / 1000.0
-        manager.update(time_delta)
-        manager.draw_ui(screen)
-        pygame.display.flip()
-
-
 def main():
     # вызов функций
     # чтобы не было вложенности функций
@@ -1109,6 +1163,3 @@ def main():
 
 
 main()
-
-
-
