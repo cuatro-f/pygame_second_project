@@ -938,6 +938,67 @@ class Background(pygame.sprite.Sprite):
         self.rect.left, self.rect.top = location
 
 
+def table():
+    data = get_information()
+    print(data)
+    manager.clear_and_reset()
+    background = Background('space_1.png', [0, 0])
+    menu_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
+        text='Меню',
+        manager=manager,
+    )
+    while True:
+        for final_screen_event in pygame.event.get():
+            if final_screen_event.type == pygame.QUIT:
+                return terminate
+            if final_screen_event.type == pygame.USEREVENT:
+                if final_screen_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if final_screen_event.ui_element == menu_button:
+                        return start_screen
+            manager.process_events(final_screen_event)
+
+        # Отображения заднего фона
+        screen.fill([0, 0, 0])
+        # screen.blit(background.image, background.rect)
+
+        try:
+            for i in range(50, 300, 50):
+                pygame.draw.line(screen, pygame.Color(255, 255, 255), (10, i), (WIDTH - 10, i))
+
+                font1 = pygame.font.Font(None, 40)
+                text = font1.render(f'{i // 50}', True, pygame.Color(255, 255, 255))
+                text_x = 40 - text.get_width() // 2 - 5
+                text_y = i + 14
+                screen.blit(text, (text_x, text_y))
+
+                font2 = pygame.font.Font(None, 20)
+                text2 = font2.render(data[i // 50 - 1][0], True, pygame.Color(255, 255, 255))
+                text_y = i + 15
+                text_x2 = 65
+                screen.blit(text2, (text_x2, text_y))
+
+                font3 = pygame.font.Font(None, 25)
+                text3 = font3.render(f'{data[i // 50 - 1][1]}', True, pygame.Color(255, 255, 255))
+                text_y = i + 15
+                text_x3 = 295
+                screen.blit(text3, (text_x3, text_y))
+        except:
+            pass
+
+        pygame.draw.line(screen, pygame.Color(255, 255, 255), (10, 300), (WIDTH - 10, 300))
+        pygame.draw.line(screen, pygame.Color(255, 255, 255), (10, 50), (10, 300))
+        pygame.draw.line(screen, pygame.Color(255, 255, 255), (60, 50), (60, 300))
+        pygame.draw.line(screen, pygame.Color(255, 0, 255), (290, 50), (290, 300))
+        pygame.draw.line(screen, pygame.Color(255, 255, 255), (WIDTH - 10, 50), (WIDTH - 10, 300))
+
+        time_delta = clock.tick(FPS) / 1000.0
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
+        pygame.display.flip()
+
+
 def terminate():
     pygame.quit()
     sys.exit()
@@ -1072,10 +1133,9 @@ def start_screen():
                 if start_screen_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if start_screen_event.ui_element == play_button:
                         return choice_of_game_mode
-            # if start_screen_event.type == pygame_gui.UI_BUTTON_PRESSED:
-            #     if start_screen_event.ui_element == play_button:
-            #         #########################################################################################
-            #         return choice_of_game_mode
+                    if start_screen_event.ui_element == rating_button:
+                        return table
+
             manager.process_events(start_screen_event)
 
         # Отображения заднего фона
@@ -1125,7 +1185,7 @@ def final_screen(points):
             manager.process_events(final_screen_event)
 
         # Отображения заднего фона
-        screen.fill([255, 255, 255])
+        screen.fill([0, 0, 0])
         screen.blit(background.image, background.rect)
 
         # текст
@@ -1136,7 +1196,7 @@ def final_screen(points):
         screen.blit(text, (text_x, text_y))
 
         font2 = pygame.font.Font(None, 24)
-        score_t = font2.render('Счёт: ', True, pygame.Color(255, 255, 255))
+        score_t = font2.render(f'Счёт: {points}', True, pygame.Color(255, 255, 255))
         screen.blit(score_t, (alignment_x, alignment_y))
 
         pygame.draw.line(screen, pygame.Color(255, 255, 255),

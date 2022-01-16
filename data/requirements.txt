@@ -1,5 +1,3 @@
-pygame
-os
-sys
-random
-pygame_gui
+pip==21.3.1
+pygame==2.1.2
+pygame-gui==0.6.0
