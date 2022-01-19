@@ -166,7 +166,6 @@ class Heal(pygame.sprite.Sprite):
             heal_sprites.remove(self)
             ship.change_heal_points('+', self.heal_count, points)
             ship.taken_heal += 1
-            print(ship.taken_heal)
 
         # Условие, позволяющее убирать аптечки, вылетевшие за пределы карты
         if self.rect.y >= HEIGHT:
@@ -888,16 +887,16 @@ def game():
                 return final_screen(points.count)
 
             if easy_mode:
-                if points.count >= 500:
+                if points.count >= 7000:
                     running = False
                     change_level_status('first_level_passed')
-                    final_screen(points.count, result='WIN')
+                    return final_screen(points.count, result='WIN')
             if hard_mode:
                 if space_ship.broken_ship_killed >= 1 and space_ship.taken_heal <= 5\
                         and space_ship.meteorite_killed >= 6:
                     running = False
                     change_level_status('second_level_passed')
-                    final_screen(points.count, result='WIN')
+                    return final_screen(points.count, result='WIN')
 
             # Отображения заднего фона
             screen.fill([255, 255, 255])
