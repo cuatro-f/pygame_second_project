@@ -1148,14 +1148,19 @@ def levels():
         text='2',
         manager=manager,
     )
+    open_main_screen_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
+        text='НА ГЛАВНЫЙ',
+        manager=manager,
+    )
 
     while True:
-        for start_screen_event in pygame.event.get():
-            if start_screen_event.type == pygame.QUIT:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
                 return terminate
-            if start_screen_event.type == pygame.USEREVENT:
-                if start_screen_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if start_screen_event.ui_element == level_1:
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == level_1:
                         # Легкий уровень
                         meteorite_array = easy_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_easy_level
@@ -1168,7 +1173,7 @@ def levels():
                         min_broken_ship_speed = min_broken_ship_speed_for_hard_level
                         max_broken_ship_speed = max_broken_ship_speed_for_hard_level
                         return game
-                    if start_screen_event.ui_element == level_2:
+                    if event.ui_element == level_2:
                         meteorite_array = hard_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_hard_level
                         max_meteorite_speed = max_meteorite_speed_for_hard_level
@@ -1179,8 +1184,10 @@ def levels():
                         min_broken_ship_speed = min_broken_ship_speed_for_easy_level
                         max_broken_ship_speed = max_broken_ship_speed_for_easy_level
                         return game
+                    if event.ui_element == open_main_screen_button:
+                        return start_screen
 
-            manager.process_events(start_screen_event)
+            manager.process_events(event)
 
         # Отображения заднего фона
         screen.fill([255, 255, 255])
