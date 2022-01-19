@@ -51,7 +51,7 @@ main_theme.set_volume(0.05)
 # шаг корабля за одно нажатие
 step = 0.5
 
-pygame.display.set_caption('Со скоростью света')
+pygame.display.set_caption('Сквозь миры со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
 FPS = 60
@@ -201,7 +201,7 @@ class HpLine:
 
         # текст хп
         font = pygame.font.Font(None, 20)
-        text = font.render(f'{hp}/{self.max_hp}', True, pygame.Color(255, 255, 255))  # фиолетовый pygame.Color(53, 0, 134)
+        text = font.render(f'{hp}/{self.max_hp}', True, pygame.Color(255, 255, 255))
         text_x = self.x + self.width // 2 - text.get_width() // 2
         text_y = self.y + self.height // 2 - text.get_height() // 2
         screen.blit(text, (text_x, text_y))
@@ -1135,14 +1135,26 @@ def levels():
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
 
+    dict1 = get_level_status()
+
+    if dict1['first_level_passed'] == 'True':
+        first_level_text = '1 - ПРОЙДЕНО'
+    else:
+        first_level_text = '1'
+
+    if dict1['second_level_passed'] == 'True':
+        second_level_text = '2 - ПРОЙДЕНО'
+    else:
+        second_level_text = '2'
+
     level_1 = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 250), (150, 30)),
-        text='1',
+        text=first_level_text,
         manager=manager,
     )
     level_2 = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 285), (150, 30)),
-        text='2',
+        text=second_level_text,
         manager=manager,
     )
     open_main_screen_button = pygame_gui.elements.UIButton(

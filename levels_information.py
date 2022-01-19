@@ -11,7 +11,6 @@ def get_level_status():
 
 def change_level_status(key):
     dict1 = get_level_status()
-    print(dict1)
     if dict1[key] == 'False':
         dict1[key] = 'True'
     with open('data\\levels.txt', mode='w', encoding='utf8') as file:
