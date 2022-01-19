@@ -817,18 +817,23 @@ def game():
                 if event.type == METEORITEGENERATION:
                     create_meteorite()
                 if event.type == LEVELCHANGE:
+                    print(meteorite_generation_time)
+                    print(max_meteorite_speed)
                     if min_meteorite_speed <= 150:
-                        min_meteorite_speed += 10
-                    if meteorite_generation_time < 1000:
+                        min_meteorite_speed += 20
+                    if meteorite_generation_time > 1000:
                         meteorite_generation_time -= 1000
                     if max_meteorite_speed <= 210:
-                        max_meteorite_speed += 10
-                    if broken_ship_generation_time < 8000:
-                        broken_ship_generation_time -= 1000
-                    if ufo_generation_time < 10000:
+                        max_meteorite_speed += 20
+                    if broken_ship_generation_time > 4000:
+                        broken_ship_generation_time -= 2000
+                    if ufo_generation_time > 10000:
                         ufo_generation_time -= 1000
-                    if level_change_time <= 29000:
-                        level_change_time += 1000
+                    if level_change_time <= 50000:
+                        level_change_time += 5000
+                    if level_change_time >= 45000:
+                        broken_ship_generation_time -= 1000
+                        level_change_time = 0
                     if level_change_time > 29000:
                         level_change_time = 0
                     if min_broken_ship_speed <= 100:
@@ -977,7 +982,6 @@ class Background(pygame.sprite.Sprite):
 
 def table():
     data = get_information()
-    print(data)
     manager.clear_and_reset()
     background = Background('space_1.png', [0, 0])
     menu_button = pygame_gui.elements.UIButton(
@@ -1252,12 +1256,6 @@ def start_screen():
     rating_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 305), (150, 30)),
         text='РЕЙТИНГ',
-        manager=manager,
-    )
-
-    rules_button = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 340), (150, 30)),
-        text='ПРАВИЛА',
         manager=manager,
     )
 

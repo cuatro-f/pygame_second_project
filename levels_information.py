@@ -16,4 +16,3 @@ def change_level_status(key):
     with open('data\\levels.txt', mode='w', encoding='utf8') as file:
         for i in dict1:
             file.write(f'{i}={dict1[i]}\n')
-
