@@ -51,7 +51,7 @@ main_theme.set_volume(0.05)
 # шаг корабля за одно нажатие
 step = 0.5
 
-pygame.display.set_caption('Сквозь миры со скоростью света')
+pygame.display.set_caption('Со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
 FPS = 60
@@ -188,7 +188,9 @@ class HpLine:
                          (self.x - 2, self.y - 2, self.width + 3, self.height + 3), width=2)
 
         # цвет полоски в зависимости от хп
-        if hp / self.max_hp <= 0.35:
+        if hp / self.max_hp <= 0.2:
+            self.color = pygame.Color(255, 36, 0)
+        elif hp / self.max_hp <= 0.4:
             self.color = pygame.Color(255, 219, 88)
         elif hp / self.max_hp <= 0.2:
             self.color = pygame.Color(255, 36, 0)
@@ -199,7 +201,7 @@ class HpLine:
 
         # текст хп
         font = pygame.font.Font(None, 20)
-        text = font.render('hp', True, pygame.Color(53, 0, 134))
+        text = font.render(f'{hp}/{self.max_hp}', True, pygame.Color(255, 255, 255))  # фиолетовый pygame.Color(53, 0, 134)
         text_x = self.x + self.width // 2 - text.get_width() // 2
         text_y = self.y + self.height // 2 - text.get_height() // 2
         screen.blit(text, (text_x, text_y))
