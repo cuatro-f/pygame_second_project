@@ -183,10 +183,10 @@ class HpLine:
                          (self.x - 2, self.y - 2, self.width + 3, self.height + 3), width=2)
 
         # цвет полоски в зависимости от хп
-        if hp / self.max_hp <= 0.35:
-            self.color = pygame.Color(255, 219, 88)
-        elif hp / self.max_hp <= 0.2:
+        if hp / self.max_hp <= 0.2:
             self.color = pygame.Color(255, 36, 0)
+        elif hp / self.max_hp <= 0.4:
+            self.color = pygame.Color(255, 219, 88)
 
         # линия здоровья
         pygame.draw.rect(screen, self.color,
@@ -194,7 +194,7 @@ class HpLine:
 
         # текст хп
         font = pygame.font.Font(None, 20)
-        text = font.render('hp', True, pygame.Color(53, 0, 134))
+        text = font.render(f'{hp}/{self.max_hp}', True, pygame.Color(255, 255, 255))  # фиолетовый pygame.Color(53, 0, 134)
         text_x = self.x + self.width // 2 - text.get_width() // 2
         text_y = self.y + self.height // 2 - text.get_height() // 2
         screen.blit(text, (text_x, text_y))
@@ -662,10 +662,11 @@ class Ufo(pygame.sprite.Sprite):
 class Points:
     def __init__(self):
         self.count = 0
+        self.x, self.y = 10, 545
 
     def add_points(self, count):
         self.count += count
-        print(self.count)
+        # print(self.count)
 
     def get_points(self):
         return self.count
@@ -673,6 +674,13 @@ class Points:
     def minus_points(self, count):
         if self.count - count >= 0:
             self.count -= count
+
+    def draw_points(self):
+        font = pygame.font.Font(None, 25)
+        points_text = font.render('Points: ', True, (255, 255, 255))
+        screen.blit(points_text, (self.x, self.y))
+        count_text = font.render(str(self.count), True, (255, 255, 255))
+        screen.blit(count_text, (self.x + points_text.get_width(), self.y))
 
 
 # Создание метеорита
@@ -891,6 +899,8 @@ def game():
             ufo_sprites.draw(screen)
             ufo_sprites.update(space_ship, points)
 
+            points.draw_points()
+
             pygame.display.flip()
             clock.tick(FPS)
         else:
@@ -1101,6 +1111,10 @@ def choice_of_game_mode():
         manager.draw_ui(screen)
 
         pygame.display.flip()
+
+
+
+
 
 
 # начальный экран
