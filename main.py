@@ -9,6 +9,7 @@ from math import sin, cos, radians
 from pygame import mixer
 
 from data_base import get_information, update_data_base
+from levels_information import get_level_status, change_level_status
 
 
 # Загрузка изображения
@@ -50,7 +51,7 @@ main_theme.set_volume(0.05)
 # шаг корабля за одно нажатие
 step = 0.5
 
-pygame.display.set_caption('Со скоростью света')
+pygame.display.set_caption('Сквозь миры со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
 FPS = 60
@@ -80,7 +81,7 @@ min_broken_ship_speed_for_hard_level = 70
 max_broken_ship_speed_for_hard_level = 100
 
 # Време для начисления очков
-points_generation_time = 5000
+points_generation_time = 9000
 
 # Время увеличения уровня игры для аркады
 level_change_time = 0
@@ -93,6 +94,9 @@ easy_meteorite_array = [1, 1, 1, 1, 2, 2, 3]
 hard_meteorite_array = [1, 1, 2, 2, 2, 2, 3, 3]
 
 arcade_mode = False
+easy_mode = False
+hard_mode = False
+name_flag = False
 
 meteorite_array = easy_meteorite_array
 min_meteorite_speed = min_meteorite_speed_for_easy_level
@@ -161,6 +165,8 @@ class Heal(pygame.sprite.Sprite):
         if not ship is None:
             heal_sprites.remove(self)
             ship.change_heal_points('+', self.heal_count, points)
+            ship.taken_heal += 1
+            print(ship.taken_heal)
 
         # Условие, позволяющее убирать аптечки, вылетевшие за пределы карты
         if self.rect.y >= HEIGHT:
@@ -183,10 +189,10 @@ class HpLine:
                          (self.x - 2, self.y - 2, self.width + 3, self.height + 3), width=2)
 
         # цвет полоски в зависимости от хп
-        if hp / self.max_hp <= 0.2:
-            self.color = pygame.Color(255, 36, 0)
-        elif hp / self.max_hp <= 0.4:
+        if hp / self.max_hp <= 0.35:
             self.color = pygame.Color(255, 219, 88)
+        elif hp / self.max_hp <= 0.2:
+            self.color = pygame.Color(255, 36, 0)
 
         # линия здоровья
         pygame.draw.rect(screen, self.color,
@@ -194,7 +200,7 @@ class HpLine:
 
         # текст хп
         font = pygame.font.Font(None, 20)
-        text = font.render(f'{hp}/{self.max_hp}', True, pygame.Color(255, 255, 255))  # фиолетовый pygame.Color(53, 0, 134)
+        text = font.render('hp', True, pygame.Color(53, 0, 134))
         text_x = self.x + self.width // 2 - text.get_width() // 2
         text_y = self.y + self.height // 2 - text.get_height() // 2
         screen.blit(text, (text_x, text_y))
@@ -235,6 +241,10 @@ class SpaceShip(pygame.sprite.Sprite):
         self.rect.x = 275
         self.rect.y = 400
         self.mask = pygame.mask.from_surface(self.image)
+
+        self.meteorite_killed = 0
+        self.broken_ship_killed = 0
+        self.taken_heal = 0
 
     """ Метод для изменения координат корабля """
 
@@ -329,7 +339,7 @@ class Meteorite(pygame.sprite.Sprite):
                                               collided=pygame.sprite.collide_mask)
         if not shot is None:
             shots_sprites.remove(shot)
-            self.minus_hp(space_ship.get_damage(), points)
+            self.minus_hp(space_ship.get_damage(), points, space_ship)
 
         # столкновение с метеоритом корябля
         ship = pygame.sprite.spritecollideany(self, ship_sprite,
@@ -357,7 +367,7 @@ class Meteorite(pygame.sprite.Sprite):
 
     """Метод, для уменьшеня количества hp при попадании"""
 
-    def minus_hp(self, value, points):
+    def minus_hp(self, value, points, space_ship):
         self.hp -= value
 
         if self.hp <= 0:
@@ -370,6 +380,7 @@ class Meteorite(pygame.sprite.Sprite):
             # когда метеорит разрушается то он удалается
             meteorite_sprites.remove(self)
             points.add_points(300)
+            space_ship.meteorite_killed += 1
 
     """Метод для получения информации о метеорите"""
 
@@ -495,7 +506,7 @@ class BrokenShip(pygame.sprite.Sprite):
                                               collided=pygame.sprite.collide_mask)
         if not shot is None:
             shots_sprites.remove(shot)
-            self.minus_hp(space_ship.get_damage(), points)
+            self.minus_hp(space_ship.get_damage(), points, space_ship)
 
         # отсчет выстрелов
         tick = self.clock_self.tick()
@@ -551,7 +562,7 @@ class BrokenShip(pygame.sprite.Sprite):
         shot_of_broken_ship_sprites.add(ShotOfBrokenShip(x_shot, y_shot, self.type_shot, self.speed, self.move_direction))
 
     # Уменьшение hp
-    def minus_hp(self, count, points):
+    def minus_hp(self, count, points, space_ship):
         self.hp -= count
         if self.hp <= 0:
             # выпадение хилки
@@ -563,6 +574,7 @@ class BrokenShip(pygame.sprite.Sprite):
             # когда сломанный корабль разрушается,то он удалается
             broken_ship_sprites.remove(self)
             points.add_points(400)
+            space_ship.broken_ship_killed += 1
 
     def get_hp(self):
         return self.hp
@@ -666,7 +678,6 @@ class Points:
 
     def add_points(self, count):
         self.count += count
-        # print(self.count)
 
     def get_points(self):
         return self.count
@@ -760,6 +771,9 @@ def game():
     global first_point, second_point
     global min_broken_ship_speed
     global max_broken_ship_speed
+    global easy_mode
+    global hard_mode
+
     # Создание экземпляра класса SpaceShip
     # Аргументы: Скоргость, hp, урон
     space_ship = SpaceShip(10, 100, 5)
@@ -797,8 +811,6 @@ def game():
                 # пауза
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
-                        '''print('pause')
-                        return pause_screen'''
                         paused = True
                 # Создание метеорита с случайными положением, радиусом, скоростью и кол-вом hp
                 if event.type == METEORITEGENERATION:
@@ -872,7 +884,20 @@ def game():
             # когда гг корабль умирает игра заканчивается
             if space_ship.hp <= 0:
                 ship_sprite.remove(space_ship)
+                running = False
                 return final_screen(points.count)
+
+            if easy_mode:
+                if points.count >= 500:
+                    running = False
+                    change_level_status('first_level_passed')
+                    final_screen(points.count, result='WIN')
+            if hard_mode:
+                if space_ship.broken_ship_killed >= 1 and space_ship.taken_heal <= 5\
+                        and space_ship.meteorite_killed >= 6:
+                    running = False
+                    change_level_status('second_level_passed')
+                    final_screen(points.count, result='WIN')
 
             # Отображения заднего фона
             screen.fill([255, 255, 255])
@@ -925,7 +950,8 @@ def game():
                     if event.type == pygame.USEREVENT:
                         if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                             if event.ui_element == end_button:
-                                return final_screen
+                                running = False
+                                return start_screen()
                     manager.process_events(event)
 
                 if flag:
@@ -999,7 +1025,7 @@ def table():
         pygame.draw.line(screen, pygame.Color(255, 255, 255), (10, 300), (WIDTH - 10, 300))
         pygame.draw.line(screen, pygame.Color(255, 255, 255), (10, 50), (10, 300))
         pygame.draw.line(screen, pygame.Color(255, 255, 255), (60, 50), (60, 300))
-        pygame.draw.line(screen, pygame.Color(255, 0, 255), (290, 50), (290, 300))
+        pygame.draw.line(screen, pygame.Color(255, 255, 255), (290, 50), (290, 300))
         pygame.draw.line(screen, pygame.Color(255, 255, 255), (WIDTH - 10, 50), (WIDTH - 10, 300))
 
         time_delta = clock.tick(FPS) / 1000.0
@@ -1014,7 +1040,6 @@ def terminate():
     sys.exit()
 
 
-# Выбор режима игры, аркада на данный момент = сложный уровень
 def choice_of_game_mode():
     global meteorite_array
     global min_meteorite_speed
@@ -1029,6 +1054,8 @@ def choice_of_game_mode():
     global easy_level_heal_drop
     global hard_level_heal_drop
     global level_change_time
+    global easy_mode
+    global hard_mode
 
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
@@ -1042,16 +1069,6 @@ def choice_of_game_mode():
         text='УРОВНИ',
         manager=manager,
     )
-    # easy_mode_button = pygame_gui.elements.UIButton(
-    #     relative_rect=pygame.Rect(((WIDTH - 150) // 2, 305), (150, 30)),
-    #     text='ЛЕГКИЙ',
-    #     manager=manager,
-    # )
-    # hard_mode_button = pygame_gui.elements.UIButton(
-    #     relative_rect=pygame.Rect(((WIDTH - 150) // 2, 340), (150, 30)),
-    #     text='СЛОЖНЫЙ',
-    #     manager=manager,
-    # )
     open_main_screen_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
         text='НА ГЛАВНЫЙ',
@@ -1067,6 +1084,8 @@ def choice_of_game_mode():
                     if choice_of_game_mode_event.ui_element == arcade_mode_button:
                         # Режим аркады
                         arcade_mode = True
+                        easy_mode = False
+                        hard_mode = False
                         meteorite_array = hard_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_easy_level - 20
                         max_meteorite_speed = max_meteorite_speed_for_easy_level - 20
@@ -1080,31 +1099,6 @@ def choice_of_game_mode():
                         return game
                     if choice_of_game_mode_event.ui_element == levels_button:
                         return levels
-                    # if choice_of_game_mode_event.ui_element == easy_mode_button:
-                    #     # Легкий уровень
-                    #     meteorite_array = easy_meteorite_array
-                    #     min_meteorite_speed = min_meteorite_speed_for_easy_level
-                    #     max_meteorite_speed = max_meteorite_speed_for_easy_level
-                    #     meteorite_generation_time = 3000
-                    #     broken_ship_generation_time = 10000
-                    #     # В легком режиме нет НЛО
-                    #     ufo_generation_time = 0
-                    #     first_point, second_point = easy_level_heal_drop
-                    #     min_broken_ship_speed = min_broken_ship_speed_for_hard_level
-                    #     max_broken_ship_speed = max_broken_ship_speed_for_hard_level
-                    #     return game
-                    # if choice_of_game_mode_event.ui_element == hard_mode_button:
-                    #     meteorite_array = hard_meteorite_array
-                    #     min_meteorite_speed = min_meteorite_speed_for_hard_level
-                    #     max_meteorite_speed = max_meteorite_speed_for_hard_level
-                    #     meteorite_generation_time = 2000
-                    #     broken_ship_generation_time = 5000
-                    #     ufo_generation_time = 12000
-                    #     first_point, second_point = hard_level_heal_drop
-                    #     min_broken_ship_speed = min_broken_ship_speed_for_easy_level
-                    #     max_broken_ship_speed = max_broken_ship_speed_for_easy_level
-                    #     return game
-
                     if choice_of_game_mode_event.ui_element == open_main_screen_button:
                         return start_screen
             manager.process_events(choice_of_game_mode_event)
@@ -1134,6 +1128,8 @@ def levels():
     global easy_level_heal_drop
     global hard_level_heal_drop
     global level_change_time
+    global hard_mode
+    global easy_mode
 
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
@@ -1162,6 +1158,9 @@ def levels():
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == level_1:
                         # Легкий уровень
+                        easy_mode = True
+                        arcade_mode = False
+                        hard_mode = False
                         meteorite_array = easy_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_easy_level
                         max_meteorite_speed = max_meteorite_speed_for_easy_level
@@ -1174,6 +1173,10 @@ def levels():
                         max_broken_ship_speed = max_broken_ship_speed_for_hard_level
                         return game
                     if event.ui_element == level_2:
+                        # Сложный уровень
+                        hard_mode = True
+                        arcade_mode = False
+                        easy_mode = False
                         meteorite_array = hard_meteorite_array
                         min_meteorite_speed = min_meteorite_speed_for_hard_level
                         max_meteorite_speed = max_meteorite_speed_for_hard_level
@@ -1200,9 +1203,31 @@ def levels():
         pygame.display.flip()
 
 
-
 # начальный экран
 def start_screen():
+    global shots_sprites
+    global meteorite_sprites
+    global ship_sprite
+    global heal_sprites
+    global broken_ship_sprites
+    global shot_of_broken_ship_sprites
+    global ufo_sprites
+
+    # группа выстрелов
+    shots_sprites.empty()
+    # группа метеоритов
+    meteorite_sprites.empty()
+    # группа корабля
+    ship_sprite.empty()
+    # группа аптечек
+    heal_sprites.empty()
+    # группа препятствия сломанный корабль
+    broken_ship_sprites.empty()
+    # группа выстрелов сломанного корабля
+    shot_of_broken_ship_sprites.empty()
+    # группа нло
+    ufo_sprites.empty()
+
     manager.clear_and_reset()
     background = Background('start_fon_2.png', [0, 0])
     # кнопка запускающая игру
@@ -1247,7 +1272,8 @@ def start_screen():
         pygame.display.flip()
 
 
-def final_screen(points):
+def final_screen(points, result=False):
+    global name_flag
     manager.clear_and_reset()
     background = Background('space_1.png', [0, 0])
 
@@ -1257,10 +1283,11 @@ def final_screen(points):
     alignment_y = 180
 
     # ввод текста
-    entry = pygame_gui.elements.UITextEntryLine(
-        relative_rect=pygame.Rect(alignment_x_end - 120, alignment_y + 45, 120, 30),
-        manager=manager,
-    )
+    if arcade_mode:
+        entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(alignment_x_end - 120, alignment_y + 45, 120, 30),
+            manager=manager,
+        )
 
     # кнопка - начать заново
     menu_button = pygame_gui.elements.UIButton(
@@ -1273,13 +1300,20 @@ def final_screen(points):
         for final_screen_event in pygame.event.get():
             if final_screen_event.type == pygame.QUIT:
                 return terminate
-            if final_screen_event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
-                person_name = entry.get_text()
-                update_data_base([person_name, points])
             if final_screen_event.type == pygame.USEREVENT:
                 if final_screen_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if final_screen_event.ui_element == menu_button:
-                        return start_screen
+                        if arcade_mode:
+                            person_name = entry.get_text()
+                            if person_name == '':
+                                name_flag = True
+                                return final_screen(points)
+                            else:
+                                name_flag = False
+                                update_data_base([person_name, points])
+                                return start_screen
+                        else:
+                            return start_screen
             manager.process_events(final_screen_event)
 
         # Отображения заднего фона
@@ -1293,15 +1327,35 @@ def final_screen(points):
         text_y = 100
         screen.blit(text, (text_x, text_y))
 
+        if name_flag:
+            font_name = pygame.font.Font(None, 60)
+            text_name = font_name.render('Введите имя', True, pygame.Color(229, 43, 80))
+            text_name_x = WIDTH // 2 - text_name.get_width() // 2
+            text_name_y = 500
+            screen.blit(text_name, (text_name_x, text_name_y))
+
         font2 = pygame.font.Font(None, 24)
         score_t = font2.render(f'Счёт: {points}', True, pygame.Color(255, 255, 255))
         screen.blit(score_t, (alignment_x, alignment_y))
+        if arcade_mode:
+            pygame.draw.line(screen, pygame.Color(255, 255, 255),
+                             (alignment_x, alignment_y + 25), (alignment_x_end, alignment_y + 25))
 
-        pygame.draw.line(screen, pygame.Color(255, 255, 255),
-                         (alignment_x, alignment_y + 25), (alignment_x_end, alignment_y + 25))
-
-        name_t = font2.render('Имя: ', True, pygame.Color(255, 255, 255))
-        screen.blit(name_t, (alignment_x, alignment_y + 50))
+            name_t = font2.render('Имя: ', True, pygame.Color(255, 255, 255))
+            screen.blit(name_t, (alignment_x, alignment_y + 50))
+        if easy_mode is True or hard_mode is True:
+            if result == 'WIN':
+                font_w = pygame.font.Font(None, 60)
+                text_w = font_w.render('ПОБЕДА', True, pygame.Color(229, 43, 80))
+                text_w_x = WIDTH // 2 - text_w.get_width() // 2
+                text_w_y = 400
+                screen.blit(text_w, (text_w_x, text_w_y))
+            else:
+                font_l = pygame.font.Font(None, 60)
+                text_l = font_l.render('ПОРАЖЕНИЕ', True, pygame.Color(229, 43, 80))
+                text_l_x = WIDTH // 2 - text_l.get_width() // 2
+                text_l_y = 400
+                screen.blit(text_l, (text_l_x, text_l_y))
 
         time_delta = clock.tick(FPS) / 1000.0
         manager.update(time_delta)
