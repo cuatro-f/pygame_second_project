@@ -50,7 +50,7 @@ main_theme.set_volume(0.05)
 # шаг корабля за одно нажатие
 step = 0.5
 
-pygame.display.set_caption('Сквозь миры со скоростью света')
+pygame.display.set_caption('Со скоростью света')
 SIZE = WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode(SIZE)
 FPS = 60
@@ -1037,16 +1037,21 @@ def choice_of_game_mode():
         text='АРКАДА',
         manager=manager,
     )
-    easy_mode_button = pygame_gui.elements.UIButton(
+    levels_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 305), (150, 30)),
-        text='ЛЕГКИЙ',
+        text='УРОВНИ',
         manager=manager,
     )
-    hard_mode_button = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 340), (150, 30)),
-        text='СЛОЖНЫЙ',
-        manager=manager,
-    )
+    # easy_mode_button = pygame_gui.elements.UIButton(
+    #     relative_rect=pygame.Rect(((WIDTH - 150) // 2, 305), (150, 30)),
+    #     text='ЛЕГКИЙ',
+    #     manager=manager,
+    # )
+    # hard_mode_button = pygame_gui.elements.UIButton(
+    #     relative_rect=pygame.Rect(((WIDTH - 150) // 2, 340), (150, 30)),
+    #     text='СЛОЖНЫЙ',
+    #     manager=manager,
+    # )
     open_main_screen_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(((WIDTH - 150) // 2, 400), (150, 30)),
         text='НА ГЛАВНЫЙ',
@@ -1073,30 +1078,32 @@ def choice_of_game_mode():
                         min_broken_ship_speed = min_broken_ship_speed_for_hard_level - 20
                         max_broken_ship_speed = max_broken_ship_speed_for_hard_level - 20
                         return game
-                    if choice_of_game_mode_event.ui_element == easy_mode_button:
-                        # Легкий уровень
-                        meteorite_array = easy_meteorite_array
-                        min_meteorite_speed = min_meteorite_speed_for_easy_level
-                        max_meteorite_speed = max_meteorite_speed_for_easy_level
-                        meteorite_generation_time = 3000
-                        broken_ship_generation_time = 10000
-                        # В легком режиме нет НЛО
-                        ufo_generation_time = 0
-                        first_point, second_point = easy_level_heal_drop
-                        min_broken_ship_speed = min_broken_ship_speed_for_hard_level
-                        max_broken_ship_speed = max_broken_ship_speed_for_hard_level
-                        return game
-                    if choice_of_game_mode_event.ui_element == hard_mode_button:
-                        meteorite_array = hard_meteorite_array
-                        min_meteorite_speed = min_meteorite_speed_for_hard_level
-                        max_meteorite_speed = max_meteorite_speed_for_hard_level
-                        meteorite_generation_time = 2000
-                        broken_ship_generation_time = 5000
-                        ufo_generation_time = 12000
-                        first_point, second_point = hard_level_heal_drop
-                        min_broken_ship_speed = min_broken_ship_speed_for_easy_level
-                        max_broken_ship_speed = max_broken_ship_speed_for_easy_level
-                        return game
+                    if choice_of_game_mode_event.ui_element == levels_button:
+                        return levels
+                    # if choice_of_game_mode_event.ui_element == easy_mode_button:
+                    #     # Легкий уровень
+                    #     meteorite_array = easy_meteorite_array
+                    #     min_meteorite_speed = min_meteorite_speed_for_easy_level
+                    #     max_meteorite_speed = max_meteorite_speed_for_easy_level
+                    #     meteorite_generation_time = 3000
+                    #     broken_ship_generation_time = 10000
+                    #     # В легком режиме нет НЛО
+                    #     ufo_generation_time = 0
+                    #     first_point, second_point = easy_level_heal_drop
+                    #     min_broken_ship_speed = min_broken_ship_speed_for_hard_level
+                    #     max_broken_ship_speed = max_broken_ship_speed_for_hard_level
+                    #     return game
+                    # if choice_of_game_mode_event.ui_element == hard_mode_button:
+                    #     meteorite_array = hard_meteorite_array
+                    #     min_meteorite_speed = min_meteorite_speed_for_hard_level
+                    #     max_meteorite_speed = max_meteorite_speed_for_hard_level
+                    #     meteorite_generation_time = 2000
+                    #     broken_ship_generation_time = 5000
+                    #     ufo_generation_time = 12000
+                    #     first_point, second_point = hard_level_heal_drop
+                    #     min_broken_ship_speed = min_broken_ship_speed_for_easy_level
+                    #     max_broken_ship_speed = max_broken_ship_speed_for_easy_level
+                    #     return game
 
                     if choice_of_game_mode_event.ui_element == open_main_screen_button:
                         return start_screen
@@ -1113,7 +1120,77 @@ def choice_of_game_mode():
         pygame.display.flip()
 
 
+def levels():
+    global meteorite_array
+    global min_meteorite_speed
+    global max_meteorite_speed
+    global meteorite_generation_time
+    global broken_ship_generation_time
+    global ufo_generation_time
+    global first_point, second_point
+    global min_broken_ship_speed
+    global max_broken_ship_speed
+    global arcade_mode
+    global easy_level_heal_drop
+    global hard_level_heal_drop
+    global level_change_time
 
+    manager.clear_and_reset()
+    background = Background('start_fon_2.png', [0, 0])
+
+    level_1 = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 250), (150, 30)),
+        text='1',
+        manager=manager,
+    )
+    level_2 = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(((WIDTH - 150) // 2, 285), (150, 30)),
+        text='2',
+        manager=manager,
+    )
+
+    while True:
+        for start_screen_event in pygame.event.get():
+            if start_screen_event.type == pygame.QUIT:
+                return terminate
+            if start_screen_event.type == pygame.USEREVENT:
+                if start_screen_event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if start_screen_event.ui_element == level_1:
+                        # Легкий уровень
+                        meteorite_array = easy_meteorite_array
+                        min_meteorite_speed = min_meteorite_speed_for_easy_level
+                        max_meteorite_speed = max_meteorite_speed_for_easy_level
+                        meteorite_generation_time = 3000
+                        broken_ship_generation_time = 10000
+                        # В легком режиме нет НЛО
+                        ufo_generation_time = 0
+                        first_point, second_point = easy_level_heal_drop
+                        min_broken_ship_speed = min_broken_ship_speed_for_hard_level
+                        max_broken_ship_speed = max_broken_ship_speed_for_hard_level
+                        return game
+                    if start_screen_event.ui_element == level_2:
+                        meteorite_array = hard_meteorite_array
+                        min_meteorite_speed = min_meteorite_speed_for_hard_level
+                        max_meteorite_speed = max_meteorite_speed_for_hard_level
+                        meteorite_generation_time = 2000
+                        broken_ship_generation_time = 5000
+                        ufo_generation_time = 12000
+                        first_point, second_point = hard_level_heal_drop
+                        min_broken_ship_speed = min_broken_ship_speed_for_easy_level
+                        max_broken_ship_speed = max_broken_ship_speed_for_easy_level
+                        return game
+
+            manager.process_events(start_screen_event)
+
+        # Отображения заднего фона
+        screen.fill([255, 255, 255])
+        screen.blit(background.image, background.rect)
+
+        time_delta = clock.tick(FPS) / 1000.0
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
+        pygame.display.flip()
 
 
 
