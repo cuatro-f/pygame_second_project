@@ -900,7 +900,7 @@ def game():
                     return final_screen(points.count, result='WIN')
             if hard_mode:
                 if space_ship.broken_ship_killed >= 1 and space_ship.taken_heal <= 5\
-                        and space_ship.meteorite_killed >= 6:
+                        and space_ship.meteorite_killed >= 6: #########################################################################
                     running = False
                     change_level_status('second_level_passed')
                     return final_screen(points.count, result='WIN')
@@ -934,7 +934,7 @@ def game():
 
             pygame.display.flip()
             clock.tick(FPS)
-        else:
+        else: ##################################################################################################################
             flag = False
             manager.clear_and_reset()
 
@@ -962,6 +962,27 @@ def game():
 
                 if flag:
                     break
+
+                if easy_mode:
+                    font = pygame.font.Font(None, 24)
+                    text1 = font.render('Задача: набрать 7000 очков', True, (255, 255, 255))
+                    screen.blit(text1, (10, 10))
+                    text1 = font.render(f'Набрано: {points.count}/7000', True, (255, 255, 255))
+                    screen.blit(text1, (10, 37))
+                elif hard_mode:
+                    font = pygame.font.Font(None, 23)
+                    text1 = font.render('Задача: убить  1 сломанный корабль', True, (255, 255, 255))
+                    text11 = font.render('               6 метеоритов, ', True, (255, 255, 255))
+                    text111 = font.render('        подобрать не более 5 хилок', True, (255, 255, 255))
+                    screen.blit(text1, (10, 10))
+                    screen.blit(text11, (10, 36))
+                    screen.blit(text111, (10, 62))
+                    text2 = font.render(f'Сломанных кораблей: {space_ship.broken_ship_killed}/1', True, (255, 255, 255))
+                    screen.blit(text2, (10, 88))
+                    text2 = font.render(f'Метеоритов: : {space_ship.meteorite_killed}/6', True, (255, 255, 255))
+                    screen.blit(text2, (10, 114))
+                    text3 = font.render(f'Хилок: : {space_ship.taken_heal}', True, (255, 255, 255))
+                    screen.blit(text3, (10, 140))
 
                 screen.blit(load_image('start_pause.png', -1), ((WIDTH - 128) // 2, (HEIGHT - 128) // 2))
 
