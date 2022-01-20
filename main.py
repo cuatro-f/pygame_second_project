@@ -899,8 +899,8 @@ def game():
                     change_level_status('first_level_passed')
                     return final_screen(points.count, result='WIN')
             if hard_mode:
-                if space_ship.broken_ship_killed >= 1 and space_ship.taken_heal <= 5\
-                        and space_ship.meteorite_killed >= 6: #########################################################################
+                if space_ship.broken_ship_killed >= 10 and space_ship.taken_heal <= 5\
+                        and space_ship.meteorite_killed >= 60: #########################################################################
                     running = False
                     change_level_status('second_level_passed')
                     return final_screen(points.count, result='WIN')
@@ -971,8 +971,8 @@ def game():
                     screen.blit(text1, (10, 37))
                 elif hard_mode:
                     font = pygame.font.Font(None, 23)
-                    text1 = font.render('Задача: убить  1 сломанный корабль', True, (255, 255, 255))
-                    text11 = font.render('               6 метеоритов, ', True, (255, 255, 255))
+                    text1 = font.render('Задача: убить  10 сломанный корабль', True, (255, 255, 255))
+                    text11 = font.render('               60 метеоритов, ', True, (255, 255, 255))
                     text111 = font.render('        подобрать не более 5 хилок', True, (255, 255, 255))
                     screen.blit(text1, (10, 10))
                     screen.blit(text11, (10, 36))
